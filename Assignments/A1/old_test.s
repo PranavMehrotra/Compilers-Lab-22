@@ -1,30 +1,30 @@
-	.file	"test.c"
-	.text
-	.section	.rodata
-	.align 8
-.LC0:
+	.file	"test.c"								# source file name
+	.text											# start of text segment (executable code)
+	.section	.rodata								# read-only data section
+	.align 8										# align with 8-byte boundary
+.LC0:												# Label of f-string 1st printf
 	.string	"Enter the string (all lowrer case): "
-.LC1:
+.LC1:												# Label of f-string scanf
 	.string	"%s"
-.LC2:
+.LC2:												# Label of f-string 2nd printf
 	.string	"Length of the string: %d\n"
 	.align 8
-.LC3:
+.LC3:												# Label of f-string 3rd printf
 	.string	"The string in descending order: %s\n"
-	.text
-	.globl	main
-	.type	main, @function
-main:
-.LFB0:
-	.cfi_startproc
+	.text											#Code Starts
+	.globl	main									#Main is a Global name
+	.type	main, @function #Main is a function
+main: #Main starts
+.LFB0: 
+	.cfi_startproc # Call Frame Information
 	endbr64
-	pushq	%rbp
+	pushq	%rbp # Save old base pointer
 	.cfi_def_cfa_offset 16
 	.cfi_offset 6, -16
-	movq	%rsp, %rbp
+	movq	%rsp, %rbp # rbp <-- rsp set new stack base pointer
 	.cfi_def_cfa_register 6
-	subq	$80, %rsp
-	movq	%fs:40, %rax
+	subq	$80, %rsp # Create space for local array and variables
+	movq	%fs:40, %rax 
 	movq	%rax, -8(%rbp)
 	xorl	%eax, %eax
 	leaq	.LC0(%rip), %rdi

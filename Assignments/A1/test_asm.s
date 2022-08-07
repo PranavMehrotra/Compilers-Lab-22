@@ -5,7 +5,7 @@
 # GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
 # options passed:  -imultiarch x86_64-linux-gnu test.c -mtune=generic
 # -march=x86-64 -auxbase-strip test_asm.s -fverbose-asm
-# -fasynchronous-unwind-tables -fstack-protector-strong -Wformat
+# -fno-stack-protector -fasynchronous-unwind-tables -Wformat
 # -Wformat-security -fstack-clash-protection -fcf-protection
 # options enabled:  -fPIC -fPIE -faggressive-loop-optimizations
 # -fassume-phsa -fasynchronous-unwind-tables -fauto-inc-dec -fcommon
@@ -22,9 +22,9 @@
 # -fsched-spec-insn-heuristic -fsched-stalled-insns-dep -fschedule-fusion
 # -fsemantic-interposition -fshow-column -fshrink-wrap-separate
 # -fsigned-zeros -fsplit-ivs-in-unroller -fssa-backprop
-# -fstack-clash-protection -fstack-protector-strong -fstdarg-opt
-# -fstrict-volatile-bitfields -fsync-libcalls -ftrapping-math -ftree-cselim
-# -ftree-forwprop -ftree-loop-if-convert -ftree-loop-im -ftree-loop-ivcanon
+# -fstack-clash-protection -fstdarg-opt -fstrict-volatile-bitfields
+# -fsync-libcalls -ftrapping-math -ftree-cselim -ftree-forwprop
+# -ftree-loop-if-convert -ftree-loop-im -ftree-loop-ivcanon
 # -ftree-loop-optimize -ftree-parallelize-loops= -ftree-phiprop
 # -ftree-reassoc -ftree-scev-cprop -funit-at-a-time -funwind-tables
 # -fverbose-asm -fzero-initialized-in-bss -m128bit-long-double -m64 -m80387
@@ -57,41 +57,37 @@ main:
 	.cfi_offset 6, -16
 	movq	%rsp, %rbp	#,
 	.cfi_def_cfa_register 6
-	subq	$80, %rsp	#,
-# test.c:9: {
-	movq	%fs:40, %rax	# MEM[(<address-space-1> long unsigned int *)40B], tmp93
-	movq	%rax, -8(%rbp)	# tmp93, D.2380
-	xorl	%eax, %eax	# tmp93
+	subq	$64, %rsp	#,
 # test.c:12:     printf("Enter the string (all lowrer case): ");
 	leaq	.LC0(%rip), %rdi	#,
 	movl	$0, %eax	#,
 	call	printf@PLT	#
 # test.c:13:     scanf("%s", str);
-	leaq	-64(%rbp), %rax	#, tmp84
+	leaq	-32(%rbp), %rax	#, tmp84
 	movq	%rax, %rsi	# tmp84,
 	leaq	.LC1(%rip), %rdi	#,
 	movl	$0, %eax	#,
 	call	__isoc99_scanf@PLT	#
 # test.c:14:     len = length(str); // calling length function
-	leaq	-64(%rbp), %rax	#, tmp85
+	leaq	-32(%rbp), %rax	#, tmp85
 	movq	%rax, %rdi	# tmp85,
 	call	length	#
-	movl	%eax, -68(%rbp)	# tmp86, len
+	movl	%eax, -4(%rbp)	# tmp86, len
 # test.c:15:     printf("Length of the string: %d\n", len);
-	movl	-68(%rbp), %eax	# len, tmp87
+	movl	-4(%rbp), %eax	# len, tmp87
 	movl	%eax, %esi	# tmp87,
 	leaq	.LC2(%rip), %rdi	#,
 	movl	$0, %eax	#,
 	call	printf@PLT	#
 # test.c:16:     sort(str, len, dest); // calling sorting function
-	leaq	-32(%rbp), %rdx	#, tmp88
-	movl	-68(%rbp), %ecx	# len, tmp89
-	leaq	-64(%rbp), %rax	#, tmp90
+	leaq	-64(%rbp), %rdx	#, tmp88
+	movl	-4(%rbp), %ecx	# len, tmp89
+	leaq	-32(%rbp), %rax	#, tmp90
 	movl	%ecx, %esi	# tmp89,
 	movq	%rax, %rdi	# tmp90,
 	call	sort	#
 # test.c:17:     printf("The string in descending order: %s\n", dest);
-	leaq	-32(%rbp), %rax	#, tmp91
+	leaq	-64(%rbp), %rax	#, tmp91
 	movq	%rax, %rsi	# tmp91,
 	leaq	.LC3(%rip), %rdi	#,
 	movl	$0, %eax	#,
@@ -99,11 +95,6 @@ main:
 # test.c:18:     return 0;
 	movl	$0, %eax	#, _9
 # test.c:19: }
-	movq	-8(%rbp), %rcx	# D.2380, tmp94
-	xorq	%fs:40, %rcx	# MEM[(<address-space-1> long unsigned int *)40B], tmp94
-	je	.L3	#,
-	call	__stack_chk_fail@PLT	#
-.L3:
 	leave	
 	.cfi_def_cfa 7, 8
 	ret	
@@ -125,11 +116,11 @@ length:
 # test.c:23:     for (i = 0; str[i] != '\0'; i++) // computing length of the string
 	movl	$0, -4(%rbp)	#, i
 # test.c:23:     for (i = 0; str[i] != '\0'; i++) // computing length of the string
-	jmp	.L5	#
-.L6:
+	jmp	.L4	#
+.L5:
 # test.c:23:     for (i = 0; str[i] != '\0'; i++) // computing length of the string
 	addl	$1, -4(%rbp)	#, i
-.L5:
+.L4:
 # test.c:23:     for (i = 0; str[i] != '\0'; i++) // computing length of the string
 	movl	-4(%rbp), %eax	# i, tmp87
 	movslq	%eax, %rdx	# tmp87, _1
@@ -138,7 +129,7 @@ length:
 	movzbl	(%rax), %eax	# *_2, _3
 # test.c:23:     for (i = 0; str[i] != '\0'; i++) // computing length of the string
 	testb	%al, %al	# _3
-	jne	.L6	#,
+	jne	.L5	#,
 # test.c:27:     return i;
 	movl	-4(%rbp), %eax	# i, _8
 # test.c:28: }
@@ -164,32 +155,32 @@ sort:
 	movl	%esi, -28(%rbp)	# len, len
 	movq	%rdx, -40(%rbp)	# dest, dest
 # test.c:33:     for (i = 0; i < len; i++)
-	movl	$0, -8(%rbp)	#, i
+	movl	$0, -4(%rbp)	#, i
 # test.c:33:     for (i = 0; i < len; i++)
-	jmp	.L9	#
-.L13:
-# test.c:35:         for (j = 0; j < len; j++)
-	movl	$0, -4(%rbp)	#, j
-# test.c:35:         for (j = 0; j < len; j++)
-	jmp	.L10	#
+	jmp	.L8	#
 .L12:
+# test.c:35:         for (j = 0; j < len; j++)
+	movl	$0, -8(%rbp)	#, j
+# test.c:35:         for (j = 0; j < len; j++)
+	jmp	.L9	#
+.L11:
 # test.c:37:             if (str[i] < str[j]) // sorting in ascending order
-	movl	-8(%rbp), %eax	# i, tmp97
+	movl	-4(%rbp), %eax	# i, tmp97
 	movslq	%eax, %rdx	# tmp97, _1
 	movq	-24(%rbp), %rax	# str, tmp98
 	addq	%rdx, %rax	# _1, _2
 	movzbl	(%rax), %edx	# *_2, _3
 # test.c:37:             if (str[i] < str[j]) // sorting in ascending order
-	movl	-4(%rbp), %eax	# j, tmp99
+	movl	-8(%rbp), %eax	# j, tmp99
 	movslq	%eax, %rcx	# tmp99, _4
 	movq	-24(%rbp), %rax	# str, tmp100
 	addq	%rcx, %rax	# _4, _5
 	movzbl	(%rax), %eax	# *_5, _6
 # test.c:37:             if (str[i] < str[j]) // sorting in ascending order
 	cmpb	%al, %dl	# _6, _3
-	jge	.L11	#,
+	jge	.L10	#,
 # test.c:39:                 temp = str[i];
-	movl	-8(%rbp), %eax	# i, tmp101
+	movl	-4(%rbp), %eax	# i, tmp101
 	movslq	%eax, %rdx	# tmp101, _7
 	movq	-24(%rbp), %rax	# str, tmp102
 	addq	%rdx, %rax	# _7, _8
@@ -197,12 +188,12 @@ sort:
 	movzbl	(%rax), %eax	# *_8, tmp103
 	movb	%al, -9(%rbp)	# tmp103, temp
 # test.c:40:                 str[i] = str[j];
-	movl	-4(%rbp), %eax	# j, tmp104
+	movl	-8(%rbp), %eax	# j, tmp104
 	movslq	%eax, %rdx	# tmp104, _9
 	movq	-24(%rbp), %rax	# str, tmp105
 	addq	%rdx, %rax	# _9, _10
 # test.c:40:                 str[i] = str[j];
-	movl	-8(%rbp), %edx	# i, tmp106
+	movl	-4(%rbp), %edx	# i, tmp106
 	movslq	%edx, %rcx	# tmp106, _11
 	movq	-24(%rbp), %rdx	# str, tmp107
 	addq	%rcx, %rdx	# _11, _12
@@ -211,28 +202,28 @@ sort:
 # test.c:40:                 str[i] = str[j];
 	movb	%al, (%rdx)	# _13, *_12
 # test.c:41:                 str[j] = temp;
-	movl	-4(%rbp), %eax	# j, tmp108
+	movl	-8(%rbp), %eax	# j, tmp108
 	movslq	%eax, %rdx	# tmp108, _14
 	movq	-24(%rbp), %rax	# str, tmp109
 	addq	%rax, %rdx	# tmp109, _15
 # test.c:41:                 str[j] = temp;
 	movzbl	-9(%rbp), %eax	# temp, tmp110
 	movb	%al, (%rdx)	# tmp110, *_15
-.L11:
-# test.c:35:         for (j = 0; j < len; j++)
-	addl	$1, -4(%rbp)	#, j
 .L10:
 # test.c:35:         for (j = 0; j < len; j++)
-	movl	-4(%rbp), %eax	# j, tmp111
-	cmpl	-28(%rbp), %eax	# len, tmp111
-	jl	.L12	#,
-# test.c:33:     for (i = 0; i < len; i++)
-	addl	$1, -8(%rbp)	#, i
+	addl	$1, -8(%rbp)	#, j
 .L9:
+# test.c:35:         for (j = 0; j < len; j++)
+	movl	-8(%rbp), %eax	# j, tmp111
+	cmpl	-28(%rbp), %eax	# len, tmp111
+	jl	.L11	#,
 # test.c:33:     for (i = 0; i < len; i++)
-	movl	-8(%rbp), %eax	# i, tmp112
+	addl	$1, -4(%rbp)	#, i
+.L8:
+# test.c:33:     for (i = 0; i < len; i++)
+	movl	-4(%rbp), %eax	# i, tmp112
 	cmpl	-28(%rbp), %eax	# len, tmp112
-	jl	.L13	#,
+	jl	.L12	#,
 # test.c:46:     reverse(str, len, dest);
 	movq	-40(%rbp), %rdx	# dest, tmp113
 	movl	-28(%rbp), %ecx	# len, tmp114
@@ -263,16 +254,16 @@ reverse:
 	movl	%esi, -28(%rbp)	# len, len
 	movq	%rdx, -40(%rbp)	# dest, dest
 # test.c:52:     for (i = 0; i < len / 2; i++)
-	movl	$0, -8(%rbp)	#, i
+	movl	$0, -4(%rbp)	#, i
 # test.c:52:     for (i = 0; i < len / 2; i++)
-	jmp	.L15	#
-.L20:
+	jmp	.L14	#
+.L19:
 # test.c:54:         for (j = len - i - 1; j >= len / 2; j--) // reversing the string
 	movl	-28(%rbp), %eax	# len, tmp99
-	subl	-8(%rbp), %eax	# i, _1
+	subl	-4(%rbp), %eax	# i, _1
 # test.c:54:         for (j = len - i - 1; j >= len / 2; j--) // reversing the string
 	subl	$1, %eax	#, tmp100
-	movl	%eax, -4(%rbp)	# tmp100, j
+	movl	%eax, -8(%rbp)	# tmp100, j
 # test.c:54:         for (j = len - i - 1; j >= len / 2; j--) // reversing the string
 	nop	
 # test.c:54:         for (j = len - i - 1; j >= len / 2; j--) // reversing the string
@@ -282,14 +273,14 @@ reverse:
 	addl	%edx, %eax	# tmp113, tmp114
 	sarl	%eax	# tmp115
 # test.c:54:         for (j = len - i - 1; j >= len / 2; j--) // reversing the string
-	cmpl	%eax, -4(%rbp)	# _11, j
-	jl	.L18	#,
+	cmpl	%eax, -8(%rbp)	# _11, j
+	jl	.L17	#,
 # test.c:56:             if (i == j)
-	movl	-8(%rbp), %eax	# i, tmp101
-	cmpl	-4(%rbp), %eax	# j, tmp101
-	je	.L23	#,
+	movl	-4(%rbp), %eax	# i, tmp101
+	cmpl	-8(%rbp), %eax	# j, tmp101
+	je	.L22	#,
 # test.c:60:                 temp = str[i];
-	movl	-8(%rbp), %eax	# i, tmp102
+	movl	-4(%rbp), %eax	# i, tmp102
 	movslq	%eax, %rdx	# tmp102, _2
 	movq	-24(%rbp), %rax	# str, tmp103
 	addq	%rdx, %rax	# _2, _3
@@ -297,12 +288,12 @@ reverse:
 	movzbl	(%rax), %eax	# *_3, tmp104
 	movb	%al, -9(%rbp)	# tmp104, temp
 # test.c:61:                 str[i] = str[j];
-	movl	-4(%rbp), %eax	# j, tmp105
+	movl	-8(%rbp), %eax	# j, tmp105
 	movslq	%eax, %rdx	# tmp105, _4
 	movq	-24(%rbp), %rax	# str, tmp106
 	addq	%rdx, %rax	# _4, _5
 # test.c:61:                 str[i] = str[j];
-	movl	-8(%rbp), %edx	# i, tmp107
+	movl	-4(%rbp), %edx	# i, tmp107
 	movslq	%edx, %rcx	# tmp107, _6
 	movq	-24(%rbp), %rdx	# str, tmp108
 	addq	%rcx, %rdx	# _6, _7
@@ -311,7 +302,7 @@ reverse:
 # test.c:61:                 str[i] = str[j];
 	movb	%al, (%rdx)	# _8, *_7
 # test.c:62:                 str[j] = temp;
-	movl	-4(%rbp), %eax	# j, tmp109
+	movl	-8(%rbp), %eax	# j, tmp109
 	movslq	%eax, %rdx	# tmp109, _9
 	movq	-24(%rbp), %rax	# str, tmp110
 	addq	%rax, %rdx	# tmp110, _10
@@ -319,14 +310,14 @@ reverse:
 	movzbl	-9(%rbp), %eax	# temp, tmp111
 	movb	%al, (%rdx)	# tmp111, *_10
 # test.c:63:                 break;
-	jmp	.L18	#
-.L23:
+	jmp	.L17	#
+.L22:
 # test.c:57:                 break;
 	nop	
-.L18:
+.L17:
 # test.c:52:     for (i = 0; i < len / 2; i++)
-	addl	$1, -8(%rbp)	#, i
-.L15:
+	addl	$1, -4(%rbp)	#, i
+.L14:
 # test.c:52:     for (i = 0; i < len / 2; i++)
 	movl	-28(%rbp), %eax	# len, tmp116
 	movl	%eax, %edx	# tmp116, tmp117
@@ -334,20 +325,20 @@ reverse:
 	addl	%edx, %eax	# tmp117, tmp118
 	sarl	%eax	# tmp119
 # test.c:52:     for (i = 0; i < len / 2; i++)
-	cmpl	%eax, -8(%rbp)	# _12, i
-	jl	.L20	#,
+	cmpl	%eax, -4(%rbp)	# _12, i
+	jl	.L19	#,
 # test.c:67:     for (i = 0; i < len; i++)
-	movl	$0, -8(%rbp)	#, i
+	movl	$0, -4(%rbp)	#, i
 # test.c:67:     for (i = 0; i < len; i++)
-	jmp	.L21	#
-.L22:
+	jmp	.L20	#
+.L21:
 # test.c:68:         dest[i] = str[i];
-	movl	-8(%rbp), %eax	# i, tmp120
+	movl	-4(%rbp), %eax	# i, tmp120
 	movslq	%eax, %rdx	# tmp120, _13
 	movq	-24(%rbp), %rax	# str, tmp121
 	addq	%rdx, %rax	# _13, _14
 # test.c:68:         dest[i] = str[i];
-	movl	-8(%rbp), %edx	# i, tmp122
+	movl	-4(%rbp), %edx	# i, tmp122
 	movslq	%edx, %rcx	# tmp122, _15
 	movq	-40(%rbp), %rdx	# dest, tmp123
 	addq	%rcx, %rdx	# _15, _16
@@ -356,12 +347,12 @@ reverse:
 # test.c:68:         dest[i] = str[i];
 	movb	%al, (%rdx)	# _17, *_16
 # test.c:67:     for (i = 0; i < len; i++)
-	addl	$1, -8(%rbp)	#, i
-.L21:
+	addl	$1, -4(%rbp)	#, i
+.L20:
 # test.c:67:     for (i = 0; i < len; i++)
-	movl	-8(%rbp), %eax	# i, tmp124
+	movl	-4(%rbp), %eax	# i, tmp124
 	cmpl	-28(%rbp), %eax	# len, tmp124
-	jl	.L22	#,
+	jl	.L21	#,
 # test.c:69: }
 	nop	
 	nop	
