@@ -147,32 +147,32 @@ sort: # sort starts
 	jge	.L10                                                    # Jump if str[i] >= str[j]
 	
 	# temp = str[i];
-	movl	-4(%rbp), %eax                                      # else, (rbp-4) -> eax
+	movl	-4(%rbp), %eax                                      # else, (rbp-4) -> eax, i -> eax
 	movslq	%eax, %rdx                                          # eax -> rdx , move 32-bit source to 64-bit destination
 	movq	-24(%rbp), %rax                                     # (rbp -24) -> rax , str -> rax
 	addq	%rdx, %rax                                          # (rdx + rax) -> rax, str + i -> str[i] -> rax
 	movzbl	(%rax), %eax                                        # copy the lower 8 bits of source to destination, copying the char value of str[i] to eax
-	movb	%al, -9(%rbp)                                       # al -> (rbp - 9) , smallest part of eax -> (rbp -9)
+	movb	%al, -9(%rbp)                                       # al -> (rbp - 9) , Least significant 8-bits(char) of eax -> (rbp -9), which is equivalent to temp = str[i]
 	
 	# str[i] = str[j];
 	movl	-8(%rbp), %eax                                      # (rbp - 8) -> eax, j-> eax
 	movslq	%eax, %rdx                                          # eax -> rdx , move 32-bit source to 64-bit destination
 	movq	-24(%rbp), %rax                                     # (rbp -24) -> rax , str -> rax
 	addq	%rdx, %rax                                          # (rdx + rax) -> rax, str + j -> str[j] -> rax
-	movl	-4(%rbp), %edx                                      # (rbp - 4) -> edx
+	movl	-4(%rbp), %edx                                      # (rbp - 4) -> edx, i -> edx
 	movslq	%edx, %rcx                                          # edx -> rcx , move 32-bit source to 64-bit destination
 	movq	-24(%rbp), %rdx                                     # (rbp -24) -> rdx , str -> rdx
 	addq	%rcx, %rdx                                          # (rdx + rcx) -> rdx, str + i -> str[i] -> rdx
-	movzbl	(%rax), %eax                                        # copy the lower 8 bits of source to destination, copying the char value of str[i] to eax
-	movb	%al, (%rdx)                                         # al -> rdx
+	movzbl	(%rax), %eax                                        # copy the lower 8 bits of source to destination, copying the char value of str[j] to eax
+	movb	%al, (%rdx)                                         # al -> rdx, str[j] -> (rdx), which is equivalent to str[i] = str[j]
 	
 	# str[j] = temp;
-	movl	-8(%rbp), %eax                                      # (rbp - 8) -> eax
+	movl	-8(%rbp), %eax                                      # (rbp - 8) -> eax, j-> eax
 	movslq	%eax, %rdx                                          # eax -> rdx , move 32-bit source to 64-bit destination
 	movq	-24(%rbp), %rax                                     # (rbp -24) -> rax , str -> rax
 	addq	%rax, %rdx                                          # (rdx + rax) -> rdx, str + j -> str[j] -> rdx
-	movzbl	-9(%rbp), %eax                                      # copy the lower 8 bits of source to destination
-	movb	%al, (%rdx)                                         # al -> rdx
+	movzbl	-9(%rbp), %eax                                      # copy the lower 8 bits of source to destination, copying the char value of temp to eax
+	movb	%al, (%rdx)                                         # al -> rdx, temp -> (rdx), which is equivalent to str[j] = temp
 .L10:
 	# j++ 
 	addl	$1, -8(%rbp)                                        # (rbp - 8) + 1 -> (rbp - 8), j = j+1
@@ -192,8 +192,8 @@ sort: # sort starts
 	movq	-40(%rbp), %rdx                                     # (rbp - 40) -> rdx, store third parameter(dest) of reverse
 	movl	-28(%rbp), %ecx                                     # (rbp - 28) -> ecx, store second parameter(len) of reverse
 	movq	-24(%rbp), %rax                                     # (rbp - 24) -> rbp, store first parameter(str) of reverse
-	movl	%ecx, %esi                                          # ecx -> esi
-	movq	%rax, %rdi                                          # rax -> rdi
+	movl	%ecx, %esi                                          # ecx -> esi, as esi is the register to store the second parameter of a function
+	movq	%rax, %rdi                                          # rax -> rdi, as rdi is the register to store the first parameter of a function
 	call	reverse                                             # call reverse
 	nop                                                         # NO operation aka nop
 	leave
@@ -224,21 +224,23 @@ reverse: #reverse starts
 
     # for (j = len - i - 1; j >= len / 2; j--)
 	movl	-28(%rbp), %eax                                     # (rbp - 28) -> eax, len -> eax
-	subl	-4(%rbp), %eax                                      # eax - (rbp - 4) -> eax, Subtract i from len
-	subl	$1, %eax                                            # eax - 1 -> eax
+	subl	-4(%rbp), %eax                                      # eax - (rbp - 4) -> eax, Subtract i from len, len - i -> eax
+	subl	$1, %eax                                            # eax - 1 -> eax, len - i - 1 -> eax
 	movl	%eax, -8(%rbp)                                      # eax -> (rbp - 8), len - i - 1 -> j
 	nop                                                         # NO operation aka nop
 	movl	-28(%rbp), %eax                                     # (rbp - 28) -> eax, len -> eax
 	movl	%eax, %edx                                          # eax -> edx
+	
+	# len / 2 -> edx
 	shrl	$31, %edx                                           # unsigned bitwise right shift of edx by 31 bits
                                                                 # to help in calculation of len/2
 	addl	%edx, %eax                                          # edx + eax -> eax
 	sarl	%eax                                                # arithmetic bitwise right shift of eax by 1 bit
-	cmpl	%eax, -8(%rbp)                                      # compare eax and (rbp - 8)
-	jl	.L17                                                    # if eax < (rbp - 8), jump tp .L17
+	cmpl	%eax, -8(%rbp)                                      # compare eax and (rbp - 8), len / 2 and j
+	jl	.L17                                                    # if eax < (rbp - 8), (if j >= len/2) jump tp .L17
 	# if (i == j)
 	movl	-4(%rbp), %eax                                      # (rbp - 4) -> eax, i -> eax
-	cmpl	-8(%rbp), %eax                                      # compare (rbp - 8) , eax
+	cmpl	-8(%rbp), %eax                                      # compare (rbp - 8) , eax, compare j and i
 	je	.L22                                                    # if equal, jump to .L22
 	
 	# temp = str[i];
@@ -246,28 +248,28 @@ reverse: #reverse starts
 	movslq	%eax, %rdx                                          # eax -> rdx , move 32-bit source to 64-bit destination
 	movq	-24(%rbp), %rax                                     # (rbp - 24) -> rax , str -> rax
 	addq	%rdx, %rax                                          # (rdx + rax) -> rax, str + j -> str[j] -> rax
-	movzbl	(%rax), %eax                                        # copy the lower 8 bits of source to destination
-	movb	%al, -9(%rbp)                                       # al -> (rbp - 9)
+	movzbl	(%rax), %eax                                        # copy the lower 8 bits of source to destination, copying the char value of str[i] to eax
+	movb	%al, -9(%rbp)                                       # al -> (rbp - 9) , Least significant 8-bits(char) of eax -> (rbp -9), which is equivalent to temp = str[i]
 	
 	# str[i] = str[j];
-	movl	-8(%rbp), %eax                                      # (rbp - 8) -> eax
+	movl	-8(%rbp), %eax                                      # (rbp - 8) -> eax, j-> eax
 	movslq	%eax, %rdx                                          # eax -> rdx , move 32-bit source to 64-bit destination
 	movq	-24(%rbp), %rax                                     # (rbp - 24) -> rax , str -> rax
 	addq	%rdx, %rax                                          # (rdx + rax) -> rax, str + j -> str[j] -> rax
 	movl	-4(%rbp), %edx                                      # (rbp - 4) -> edx, i -> edx
 	movslq	%edx, %rcx                                          # edx -> rcx , move 32-bit source to 64-bit destination
 	movq	-24(%rbp), %rdx                                     # (rbp - 24) -> rdx , str -> rdx
-	addq	%rcx, %rdx                                          # (rcx + rdx) -> rdx
-	movzbl	(%rax), %eax                                        # copy the lower 8 bits of source to destination
-	movb	%al, (%rdx)                                         # al -> rdx
+	addq	%rcx, %rdx                                          # (rcx + rdx) -> rdx, str + i -> str[i] -> rdx
+	movzbl	(%rax), %eax                                        # copy the lower 8 bits of source to destination, copying the char value of str[j] to eax
+	movb	%al, (%rdx)                                         # al -> rdx, str[j] -> (rdx), which is equivalent to str[i] = str[j]
 	
 	# str[j] = temp;
-	movl	-8(%rbp), %eax                                      # (rbp - 8) -> eax
+	movl	-8(%rbp), %eax                                      # (rbp - 8) -> eax, j-> eax
 	movslq	%eax, %rdx                                          # eax -> rdx , move 32-bit source to 64-bit destination
 	movq	-24(%rbp), %rax                                     # (rbp -24) -> rax , str -> rax
 	addq	%rax, %rdx                                          # (rdx + rax) -> rax, str + j -> str[j] -> rax
-	movzbl	-9(%rbp), %eax                                      # copy the lower 8 bits of source to destination
-	movb	%al, (%rdx)                                         # al -> rdx
+	movzbl	-9(%rbp), %eax                                      # copy the lower 8 bits of source to destination, copying the char value of temp to eax
+	movb	%al, (%rdx)                                         # al -> rdx, temp -> (rdx), which is equivalent to str[j] = temp
 	
 	# break;
 	jmp	.L17                                                    # Uncoditional jump to .L17
@@ -275,17 +277,19 @@ reverse: #reverse starts
 	nop                                                         # NO operation aka nop
 .L17:
     # for (i = 0; i < len / 2; i++)
-	addl	$1, -4(%rbp)                                        # (rbp - 4) + 1 -> (rbp - 4)
+	addl	$1, -4(%rbp)                                        # (rbp - 4) + 1 -> (rbp - 4), i++
 .L14:
     # for (i = 0; i < len / 2; i++)
 	movl	-28(%rbp), %eax                                     # (rbp - 28) -> eax, len -> eax
 	movl	%eax, %edx                                          # eax -> edx
+	
+	# len / 2 -> edx
 	shrl	$31, %edx                                           # unsigned bitwise right shift of edx by 31 bits
                                                                 # to help in calculation of len/2 
 	addl	%edx, %eax                                          # edx + eax -> eax
 	sarl	%eax                                                # arithmetic bitwise right shift of eax by 1 bit
-	cmpl	%eax, -4(%rbp)                                      # compare eax and (rbp - 4)
-	jl	.L19                                                    # if eax < (rbp - 4), jump tp .L19
+	cmpl	%eax, -4(%rbp)                                      # compare eax and (rbp - 4), len/2 and i
+	jl	.L19                                                    # if eax < (rbp - 4), jump tp .L19, if i < len/2
 	
 	# for (i = 0; i < len; i++)
 	movl	$0, -4(%rbp)                                        # 0 -> (rbp -4), clear
@@ -300,16 +304,16 @@ reverse: #reverse starts
 	movslq	%edx, %rcx                                          # edx -> rcx , move 32-bit source to 64-bit destination
 	movq	-40(%rbp), %rdx                                     # (rbp - 40) -> rdx , dest -> rdx
 	addq	%rcx, %rdx                                          # (rcx + rdx) -> rdx
-	movzbl	(%rax), %eax                                        # copy the lower 8 bits of source to destination
-	movb	%al, (%rdx)                                         # al -> rdx
+	movzbl	(%rax), %eax                                        # copy the lower 8 bits of source to destination, copying the char value of str[i] to eax
+	movb	%al, (%rdx)                                         # al -> rdx, str[j] -> (rdx), which is equivalent to dest[i] = str[i]
 	
 	# i++
-	addl	$1, -4(%rbp)                                        # (rbp - 4) + 1 -> (rbp - 4)
+	addl	$1, -4(%rbp)                                        # (rbp - 4) + 1 -> (rbp - 4), i = i+1
 .L20:
     # for (i = 0; i < len; i++)
-	movl	-4(%rbp), %eax                                      # (rbp - 4) -> eax
-	cmpl	-28(%rbp), %eax                                     # compare (rbp -28) , eax
-	jl	.L21                                                    # if (rbp - 28) > eax
+	movl	-4(%rbp), %eax                                      # (rbp - 4) -> eax, i -> eax
+	cmpl	-28(%rbp), %eax                                     # compare (rbp -28) , eax, len and i
+	jl	.L21                                                    # if (rbp - 28) > eax, if( i < len)
 	nop                                                         # NO operation aka nop
 	nop                                                         # NO operation aka nop
 	popq	%rbp                                                # pop the base pointer of the caller function and reset the rbp register
