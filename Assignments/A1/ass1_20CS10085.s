@@ -1,4 +1,4 @@
-	.file	"test.c"								            # source file name
+	.file	"ass1.c"								            # source file name
 	.text											            # start of text segment (executable code)
 	.section	.rodata								            # read-only data section
 	.align 8										            # align with 8-byte boundary
@@ -78,10 +78,10 @@ length: # length starts
 .LFB1:
 	.cfi_startproc                                              # Call Frame Information
 	endbr64
-	pushq	%rbp                                                # Save old base pointer
+	pushq	%rbp                                                # Save old base pointer of the caller function
 	.cfi_def_cfa_offset 16
 	.cfi_offset 6, -16
-	movq	%rsp, %rbp                                          # rbp <-- rsp set new stack base pointer
+	movq	%rsp, %rbp                                          # rbp <-- rsp set new stack base pointer of the called function
 	.cfi_def_cfa_register 6
 	movq	%rdi, -24(%rbp)                                     # rdi -> (rbp - 24) , store first function parameter recieved
     
@@ -102,7 +102,7 @@ length: # length starts
 	testb	%al, %al                                            # performs a bitwise AND of al and al, to check for null character
 	jne	.L5                                                     # increment i, if (al&al) not equal to zero
 	movl	-4(%rbp), %eax                                      # (rbp -4) -> eax, i -> eax
-	popq	%rbp                                                # pop the base pointer
+	popq	%rbp                                                # pop the base pointer of the caller function and reset the rbp register
 	.cfi_def_cfa 7, 8
 	ret                                                         # return from length
 	.cfi_endproc
@@ -114,10 +114,10 @@ sort: # sort starts
 .LFB2:
 	.cfi_startproc                                              # Call Frame Information
 	endbr64
-	pushq	%rbp                                                # Save old base pointer
+	pushq	%rbp                                                # Save old base pointer of the caller function
 	.cfi_def_cfa_offset 16
 	.cfi_offset 6, -16
-	movq	%rsp, %rbp                                          # rbp <-- rsp set new stack base pointer
+	movq	%rsp, %rbp                                          # rbp <-- rsp set new stack base pointer of the called function
 	.cfi_def_cfa_register 6
 	subq	$48, %rsp                                           # Create space for local array and variables
 	movq	%rdi, -24(%rbp)                                     # rdi -> (rbp - 24), save first parameter(str) of sort
@@ -145,12 +145,16 @@ sort: # sort starts
 	movzbl	(%rax), %eax                                        # copy the lower 8 bits of source to destination, copying the char value of str[i] to eax
 	cmpb	%al, %dl                                            # comparing smallest parts of eax and edx
 	jge	.L10                                                    # Jump if str[i] >= str[j]
+	
+	# temp = str[i];
 	movl	-4(%rbp), %eax                                      # else, (rbp-4) -> eax
 	movslq	%eax, %rdx                                          # eax -> rdx , move 32-bit source to 64-bit destination
 	movq	-24(%rbp), %rax                                     # (rbp -24) -> rax , str -> rax
 	addq	%rdx, %rax                                          # (rdx + rax) -> rax, str + i -> str[i] -> rax
 	movzbl	(%rax), %eax                                        # copy the lower 8 bits of source to destination, copying the char value of str[i] to eax
 	movb	%al, -9(%rbp)                                       # al -> (rbp - 9) , smallest part of eax -> (rbp -9)
+	
+	# str[i] = str[j];
 	movl	-8(%rbp), %eax                                      # (rbp - 8) -> eax, j-> eax
 	movslq	%eax, %rdx                                          # eax -> rdx , move 32-bit source to 64-bit destination
 	movq	-24(%rbp), %rax                                     # (rbp -24) -> rax , str -> rax
@@ -161,6 +165,8 @@ sort: # sort starts
 	addq	%rcx, %rdx                                          # (rdx + rcx) -> rdx, str + i -> str[i] -> rdx
 	movzbl	(%rax), %eax                                        # copy the lower 8 bits of source to destination, copying the char value of str[i] to eax
 	movb	%al, (%rdx)                                         # al -> rdx
+	
+	# str[j] = temp;
 	movl	-8(%rbp), %eax                                      # (rbp - 8) -> eax
 	movslq	%eax, %rdx                                          # eax -> rdx , move 32-bit source to 64-bit destination
 	movq	-24(%rbp), %rax                                     # (rbp -24) -> rax , str -> rax
@@ -168,6 +174,7 @@ sort: # sort starts
 	movzbl	-9(%rbp), %eax                                      # copy the lower 8 bits of source to destination
 	movb	%al, (%rdx)                                         # al -> rdx
 .L10:
+	# j++ 
 	addl	$1, -8(%rbp)                                        # (rbp - 8) + 1 -> (rbp - 8), j = j+1
 .L9:
     # for (j = 0; j < len; j++)
@@ -181,7 +188,7 @@ sort: # sort starts
 	cmpl	-28(%rbp), %eax                                     # compare i and len
 	jl	.L12                                                    # if i < len , jump to .L12
     
-    # else call reverse
+    # reverse(str, len, dest);
 	movq	-40(%rbp), %rdx                                     # (rbp - 40) -> rdx, store third parameter(dest) of reverse
 	movl	-28(%rbp), %ecx                                     # (rbp - 28) -> ecx, store second parameter(len) of reverse
 	movq	-24(%rbp), %rax                                     # (rbp - 24) -> rbp, store first parameter(str) of reverse
@@ -201,10 +208,10 @@ reverse: #reverse starts
 .LFB3:
 	.cfi_startproc                                              # Call Frame Information
 	endbr64
-	pushq	%rbp                                                # Save old base pointer
+	pushq	%rbp                                                # Save old base pointer of the caller function
 	.cfi_def_cfa_offset 16
 	.cfi_offset 6, -16
-	movq	%rsp, %rbp                                          # rbp <-- rsp set new stack base pointer
+	movq	%rsp, %rbp                                          # rbp <-- rsp set new stack base pointer of the called function
 	.cfi_def_cfa_register 6
 	movq	%rdi, -24(%rbp)                                     # rdi -> (rbp - 24), save first parameter(str) of reverse
 	movl	%esi, -28(%rbp)                                     # esi -> (rbp - 28), save second parameter(len) of reverse
@@ -229,15 +236,20 @@ reverse: #reverse starts
 	sarl	%eax                                                # arithmetic bitwise right shift of eax by 1 bit
 	cmpl	%eax, -8(%rbp)                                      # compare eax and (rbp - 8)
 	jl	.L17                                                    # if eax < (rbp - 8), jump tp .L17
+	# if (i == j)
 	movl	-4(%rbp), %eax                                      # (rbp - 4) -> eax, i -> eax
 	cmpl	-8(%rbp), %eax                                      # compare (rbp - 8) , eax
 	je	.L22                                                    # if equal, jump to .L22
+	
+	# temp = str[i];
 	movl	-4(%rbp), %eax                                      # (rbp - 4) -> eax, i -> eax
 	movslq	%eax, %rdx                                          # eax -> rdx , move 32-bit source to 64-bit destination
 	movq	-24(%rbp), %rax                                     # (rbp - 24) -> rax , str -> rax
 	addq	%rdx, %rax                                          # (rdx + rax) -> rax, str + j -> str[j] -> rax
 	movzbl	(%rax), %eax                                        # copy the lower 8 bits of source to destination
 	movb	%al, -9(%rbp)                                       # al -> (rbp - 9)
+	
+	# str[i] = str[j];
 	movl	-8(%rbp), %eax                                      # (rbp - 8) -> eax
 	movslq	%eax, %rdx                                          # eax -> rdx , move 32-bit source to 64-bit destination
 	movq	-24(%rbp), %rax                                     # (rbp - 24) -> rax , str -> rax
@@ -248,12 +260,16 @@ reverse: #reverse starts
 	addq	%rcx, %rdx                                          # (rcx + rdx) -> rdx
 	movzbl	(%rax), %eax                                        # copy the lower 8 bits of source to destination
 	movb	%al, (%rdx)                                         # al -> rdx
+	
+	# str[j] = temp;
 	movl	-8(%rbp), %eax                                      # (rbp - 8) -> eax
 	movslq	%eax, %rdx                                          # eax -> rdx , move 32-bit source to 64-bit destination
 	movq	-24(%rbp), %rax                                     # (rbp -24) -> rax , str -> rax
 	addq	%rax, %rdx                                          # (rdx + rax) -> rax, str + j -> str[j] -> rax
 	movzbl	-9(%rbp), %eax                                      # copy the lower 8 bits of source to destination
 	movb	%al, (%rdx)                                         # al -> rdx
+	
+	# break;
 	jmp	.L17                                                    # Uncoditional jump to .L17
 .L22:
 	nop                                                         # NO operation aka nop
@@ -270,6 +286,8 @@ reverse: #reverse starts
 	sarl	%eax                                                # arithmetic bitwise right shift of eax by 1 bit
 	cmpl	%eax, -4(%rbp)                                      # compare eax and (rbp - 4)
 	jl	.L19                                                    # if eax < (rbp - 4), jump tp .L19
+	
+	# for (i = 0; i < len; i++)
 	movl	$0, -4(%rbp)                                        # 0 -> (rbp -4), clear
 	jmp	.L20                                                    # Uncoditional jump to .L20
 .L21:
@@ -284,6 +302,8 @@ reverse: #reverse starts
 	addq	%rcx, %rdx                                          # (rcx + rdx) -> rdx
 	movzbl	(%rax), %eax                                        # copy the lower 8 bits of source to destination
 	movb	%al, (%rdx)                                         # al -> rdx
+	
+	# i++
 	addl	$1, -4(%rbp)                                        # (rbp - 4) + 1 -> (rbp - 4)
 .L20:
     # for (i = 0; i < len; i++)
@@ -292,7 +312,7 @@ reverse: #reverse starts
 	jl	.L21                                                    # if (rbp - 28) > eax
 	nop                                                         # NO operation aka nop
 	nop                                                         # NO operation aka nop
-	popq	%rbp                                                # pop the base pointer
+	popq	%rbp                                                # pop the base pointer of the caller function and reset the rbp register
 	.cfi_def_cfa 7, 8
 	ret                                                         # return from reverse
 	.cfi_endproc
