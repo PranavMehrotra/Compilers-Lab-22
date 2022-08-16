@@ -5,71 +5,71 @@
 
 int main(){
 
-    printStr("#### Testing printStr ####\n");
-    char *s[3] = {"This is a sample string to be printed.", "Next follows an empty string.", ""};
-    char *newline = "\n";
+    printStr("*** Testing printStr ***\n");
+    char *str[3] = {"Checking by printing a sample string.", "Now printing an empty string in the nextline", ""};
+    char *nl = "\n";
     for(int i=0; i<3; i++){
         printStr("\""); 
-        int ret = printStr(s[i]); 
-        printStr("\" -> number of characters printed = ");
-        printInt(ret);
-        printStr(newline);
+        int returnValue = printStr(str[i]); 
+        printStr("\" -> number of printed characters = ");
+        printInt(returnValue);
+        printStr(nl);
     }
-    printStr(newline);
+    printStr(nl);
 
-    printStr("#### Testing printInt ####\n");
-    int ints[11] = {0, 1, -1, 12, -12, 1234, -1234, 12345, -12345, INT_MAX, INT_MIN};
+    printStr("*** Testing printInt ***\n");
+    int ints[11] = {0, 7, -7, 17, -17, 198, -198, 17861, -17861, INT_MAX, INT_MIN};
     for(int i=0; i<11; i++){
-        int ret = printInt(ints[i]);
-        printStr(" -> number of characters printed = ");
-        printInt(ret);
-        printStr(newline);
+        int returnValue = printInt(ints[i]);
+        printStr(" -> number of digits printed = ");
+        printInt(returnValue);
+        printStr(nl);
     }
-    printStr(newline);
+    printStr(nl);
 
-    printStr("#### Testing printFlt ####\n");
-    float floats[10] = {0.F, -12.34F, 12.345F, -2.F, 2.F, 0.1234F, -0.1234F, 123.456F, 0.001F, -0.0106F};
+    printStr("*** Testing printFlt ***\n");
+    float floats[10] = {0, -15.25, 15.25, -3, 3, 0.1093, -0.1093, 176.125, 0.003, -0.0102};
     for(int i=0; i<10; i++){
-        int ret = printFlt(floats[i]);
-        printStr(" -> number of characters printed = ");
-        printInt(ret);
-        printStr(newline);
+        int returnValue = printFlt(floats[i]);
+        printStr(" -> number of digits printed = ");
+        printInt(returnValue);
+        printStr(nl);
     }
-    printStr(newline);
+    printStr(nl);
 
-    printStr("#### Testing readInt ####\n");
+    printStr("*** Testing readInt ***\n");
     int ntemp;
-    int rep = 0;
-    do {
+    int flag = 1;
+    while(flag == 1){
         printStr("Enter an integer: ");
-        int ret = readInt(&ntemp);
-        if(ret == ERR) 
+        int returnValue = readInt(&ntemp);
+        if(returnValue == ERR) 
             printStr("Invalid input. ");
         else{
-            printStr("Successfuly read integer: ");
+            printStr("Read integer: ");
             printInt(ntemp);
         }
-        printStr("\nTo continue reading enter 1 otherwise 0: ");
-        readInt(&rep);
-    } while(rep != 0);
-    printStr(newline);
+        printStr("\nTo test again enter 1 otherwise 0: ");
+        readInt(&flag);
+    }
+    printStr(nl);
 
-    printStr("#### Testing readFlt ####\n");
+    printStr("*** Testing readFlt ***\n");
     float ftemp;
-    rep = 0;
-    do {
-        printStr("Enter a float: ");
-        int ret = readFlt(&ftemp);
-        if(ret == ERR) 
+    flag = 1;
+    while(flag == 1){
+        printStr("Enter a floating point number: ");
+        int returnValue = readFlt(&ftemp);
+        if(returnValue == ERR) 
             printStr("Invalid input. ");
         else{
-            printStr("Successfuly read float: ");
+            printStr("Read float: ");
             printFlt(ftemp);
         }
-        printStr("\nTo continue reading enter 1 otherwise 0: ");
-        readInt(&rep);
-    } while(rep != 0);
-    printStr(newline);
+        printStr("\nTo test again enter 1 otherwise 0: ");
+        readInt(&flag);
+    }
+    printStr(nl);
 
     return 0;
 }

@@ -222,6 +222,16 @@ int printFlt(float f){
         str[j++] = str[k];
         str[k--] = tem;
     }
+    k=i-1;
+    while(str[k]=='0'){
+        i--;
+        k--;
+    }
+    k=i-1;
+    if(str[k]=='.'){
+        str[i]='0';
+        i++;
+    }
     str[i]='\n';
     digits = i+1;
     __asm__ __volatile__(
