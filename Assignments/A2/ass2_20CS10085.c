@@ -58,7 +58,7 @@ int printInt(int a){
         "syscall \n\t"
         :
         : "S"(str), "d"(digits));
-    return digits;
+    return digits-1;
 }
 
 int readInt(int *n){
@@ -240,5 +240,5 @@ int printFlt(float f){
         "syscall \n\t"
         :
         : "S"(str), "d"(digits));
-    return digits;
+    return digits-1;
 }
