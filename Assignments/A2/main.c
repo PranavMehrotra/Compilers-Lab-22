@@ -29,7 +29,7 @@ void check_readInt(){
 
 void check_printInt(int integer){
         int returnValue = printInt(integer);
-        printStr(" -> number of digits printed = ");
+        printStr(" -> number of characters printed = ");
         printInt(returnValue);
         printStr(nl);
 }

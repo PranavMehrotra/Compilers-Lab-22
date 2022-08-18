@@ -50,7 +50,7 @@ int printInt(int a){
     if(flag){
         str[i-1] = '8';
     }
-    str[i]='\n';
+    str[i]='\0';
     digits = i+1;
     __asm__ __volatile__(
         "movl $1, %%eax \n\t"
@@ -232,7 +232,7 @@ int printFlt(float f){
         str[i]='0';
         i++;
     }
-    str[i]='\n';
+    str[i]='\0';
     digits = i+1;
     __asm__ __volatile__(
         "movl $1, %%eax \n\t"
