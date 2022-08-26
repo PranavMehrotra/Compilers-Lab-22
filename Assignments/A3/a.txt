@@ -1,0 +1,7 @@
+inline int foo(int *restrict p, ...) {
+    auto int a = "hello";
+    register int b;
+    extern int c;
+    volatile int d;
+    return a;
+}
