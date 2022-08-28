@@ -2,16 +2,10 @@
 #include<stdio.h>
 #define KEYWORD                 1
 #define IDENTIFIER              2
-#define INTEGER_CONSTANT        3
-#define FLOATING_CONSTANT       4
-#define ENUMERATION_CONSTANT    5
-#define CHARACTER_CONSTANT      6
-#define STRING_LITERAL          7
-#define PUNCTUATOR              8
-#define MULTI_LINE_COMMENT      9
-#define SINGLE_LINE_COMMENT     10
-#define INVALID_TOKEN           11
-
+#define CONSTANT                3
+#define STRING_LITERAL          4
+#define PUNCTUATOR              5
+#define INVALID_TOKEN           6
 %}
 
 
@@ -30,7 +24,7 @@ delim                   {ws}+
 
 identifier              {id_non_digit}{id_digit}*
 
-integer_constant        {nonzero_digit}{digit}*
+integer_constant        {nonzero_digit}{digit}*|"0"
 
 fractional_constant     {digit_seq}?\.{digit_seq}|{digit_seq}\.
 exponent                [eE]{sign}?{digit_seq}
@@ -41,6 +35,7 @@ c_char                  [^\'\n\\]|{escape}
 c_seq                   {c_char}+
 char_constant           \'{c_seq}\'
 
+constant                {integer_constant}|{floating_constant}|{enum_constant}|{char_constant}
 s_char                  [^\"\\\n]|{escape}
 s_seq                   {s_char}+
 string                  \"{s_seq}?\"
@@ -48,11 +43,11 @@ string                  \"{s_seq}?\"
 punctuators             "["|"]"|"("|")"|"{"|"}"|"."|"-"|">"|"++"|"--"|"&"|"*"|"+"|"-"|"~"|"!"|"/"|"%"|"<<"|">>"|"<"|">"|"<="|">="|"=="|"!="|"^"|"|"|"&&"|"||"|"?"|":"|";"|"..."|"="|"*="|"/="|"%="|"+="|"-="|"<<="|">>="|"&="|"^="|"|="|","|"#"
 %%
 
+"//".*\n                        { ; }
+"/*"[^*/]*"*/"                  { ; }
 {keyword}                       { return KEYWORD; }
 {identifier}                    { return IDENTIFIER; }
-{integer_constant}              { return INTEGER_CONSTANT; }
-{floating_constant}             { return FLOATING_CONSTANT; }
-{char_constant}                 { return CHARACTER_CONSTANT; }
+{constant}                      { return CONSTANT; }
 {string}                        { return STRING_LITERAL; }
 {punctuators}                   { return PUNCTUATOR; }
 {delim}                         { ; }

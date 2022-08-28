@@ -1,6 +1,9 @@
 inline int foo(int *restrict p, ...) {
-    auto int a = "hello";
+    auto int a = 1;     //hello how are you
     register int b;
+    /*hello i am fine
+    i am good
+    */
     extern int c;
     volatile int d;
     return a;
