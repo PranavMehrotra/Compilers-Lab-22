@@ -18,7 +18,7 @@ nonzero_digit           [1-9]
 digit_seq               {digit}+
 
 sign                    [+-]
-escape                  "\\\'"|"\\\""|"\\\?"|"\\\\"|"\\\a"|"\\\b"|"\\\f"|"\\\n"|"\\\r"|"\\\t"|"\\\v"
+escape                  "\\\'"|"\\\""|"\\\?"|"\\\\"|"\\a"|"\\b"|"\\f"|"\\n"|"\\r"|"\\t"|"\\v"
 ws                      [ \t\n\r]
 delim                   {ws}+
 
@@ -43,9 +43,10 @@ string                  \"{s_seq}?\"
 punctuators             "["|"]"|"("|")"|"{"|"}"|"."|"-"|">"|"++"|"--"|"&"|"*"|"+"|"-"|"~"|"!"|"/"|"%"|"<<"|">>"|"<"|">"|"<="|">="|"=="|"!="|"^"|"|"|"&&"|"||"|"?"|":"|";"|"..."|"="|"*="|"/="|"%="|"+="|"-="|"<<="|">>="|"&="|"^="|"|="|","|"#"
 %%
 
-"//".*\n                        { ; }
+"//".*\n|"//".*                 { ; }
 "/*"[^*/]*"*/"                  { ; }
 {keyword}                       { return KEYWORD; }
+{digit_seq}{identifier}         { return INVALID_TOKEN; }
 {identifier}                    { return IDENTIFIER; }
 {constant}                      { return CONSTANT; }
 {string}                        { return STRING_LITERAL; }
