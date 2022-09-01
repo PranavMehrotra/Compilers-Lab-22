@@ -1,22 +1,14 @@
-#include <stdlib.h>
+printf("//hello")
+//hi how are you
+2
 
-using namespace std;
-typedef struct
-{
-  if(x>0)while(n);
-  int *Arr;
-  int queue_size, start_id, end_id;
-}QUEUE;//queue structure defined
 
-//This is a test code
-        /*
-                    to check whitespace
-    */
+3
 
-   //To check comments at EOF
 
-for(int i=0;i<n;++i)
-{
-    printf("hello\n");
-    a = '\n';
-}
+handler       k_main
+
+/* hello
+    kkenf
+          ofjlke
+  */
