@@ -1,19 +1,18 @@
 #include<stdio.h>
-#define KEYWORD                 1
+#define KEYWORD                 1                       //define all the macros used in the lex file 
 #define IDENTIFIER              2
 #define CONSTANT                3
 #define STRING_LITERAL          4
 #define PUNCTUATOR              5
 #define INVALID_TOKEN           6
 
-extern int yylex();
-extern int yylineno;
+extern int yylex();                                     //include yylex(), yytext using extern
 extern char* yytext;
 
 int main(void)
 {
-    int x = yylex();
-    while(x)
+    int x = yylex();                                    //read a lexeme
+    while(x)                                            //check the type of lexeme and print an appropriate token
     {
         if(x==KEYWORD)printf("<KEYWORD, %s>\n",yytext);
         else if(x==IDENTIFIER)printf("<ID, %s>\n",yytext);
