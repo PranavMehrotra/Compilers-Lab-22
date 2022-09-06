@@ -62,7 +62,7 @@ punctuators                     "["|"]"|"("|")"|"{"|"}"|"."|"-"|">"|"++"|"--"|"&
 <single_line>.                  { }
 <single_line>\n                 { BEGIN(INITIAL);}
 
-    /* Regex for multi line commenst will be active only when /* is read */
+    /* Regex for multi line comments will be active only when /* is read */
 "/*"                            { BEGIN(multi_line); }
 <multi_line>.                   { }
 <multi_line>\n                  { }
