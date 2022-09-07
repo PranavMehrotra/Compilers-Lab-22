@@ -30,7 +30,7 @@ delim                           {ws}+
 
 identifier                      {id_non_digit}{id_digit}*
 
-integer_constant                {nonzero_digit}{digit}*|"0"
+integer_constant                {nonzero_digit}{digit}*
 
 fractional_constant             {digit_seq}?\.{digit_seq}|{digit_seq}\.
 exponent                        [eE]{sign}?{digit_seq}
