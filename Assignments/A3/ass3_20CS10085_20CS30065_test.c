@@ -23,7 +23,7 @@ int main(void)
     
     char d='h';
     printf("Hello world\n");//print message
-    for(a=0; a<n;i++)
+    for(a=1; a<n;i++)
     {
         x++;
     }
@@ -48,5 +48,33 @@ int main(void)
             a++;
         case 2:
             b++;
-    }return 0;
+    }
+    
+    int dequeue(QUEUE *qP)
+    {
+    int a = qP->Arr[(qP->start_id)+1];
+    qP->start_id =(((qP->start_id)+1));//to delete an element
+    return a;
+    }
+    void display_queue(QUEUE *qP)
+    {
+        int i;
+        for(i=qP->start_id+1;i<=(qP->end_id);++i)
+        printf("%d,",qP->Arr[i]);//print the elements of the queue
+    }
+    float a = 2.34E98 + 2.566e-90;
+    if(a>b)printf("hello this is a");
+    else printf("this is b");
+    
+    //some single line comments to check with               multiple tabs
+
+
+    /* some     multiline commenst with multiple spaces tabs and newline.
+    **
+    //
+
+    */
+
+    return 0;
+
 }//return from main
