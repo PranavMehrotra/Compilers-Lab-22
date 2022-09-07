@@ -1,6 +1,5 @@
 %{
-//Auxiliary declarations 
-#include<stdio.h>
+//Auxiliary declarations
 #define KEYWORD                 1
 #define IDENTIFIER              2
 #define CONSTANT                3
