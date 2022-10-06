@@ -20,7 +20,8 @@ digit_seq                       {digit}+
 
 sign                            [+-]
 escape                          "\\\'"|"\\\""|"\\\?"|"\\\\"|"\\a"|"\\b"|"\\f"|"\\n"|"\\r"|"\\t"|"\\v"
-ws                              [ \t\n\r]
+ws                              [ \t\r]
+newline                         [\n]
 delim                           {ws}+
 
 identifier                      {id_non_digit}{id_digit}*
@@ -44,7 +45,7 @@ string                          \"{s_seq}?\"
 punctuators                     "["|"]"|"("|")"|"{"|"}"|"."|"-"|">"|"++"|"--"|"&"|"*"|"+"|"-"|"~"|"!"|"/"|"%"|"<<"|">>"|"<"|">"|"<="|">="|"=="|"!="|"^"|"|"|"&&"|"||"|"?"|":"|";"|"..."|"="|"*="|"/="|"%="|"+="|"-="|"<<="|">>="|"&="|"^="|"|="|","|"#"
 %%
 
-    /* transition rules*/
+    /* transition rules corresponding to keywords */
 "auto"                          { return AUTO; }
 "break"                         { return BREAK; }
 "case"                          { return CASE; }
@@ -83,7 +84,7 @@ punctuators                     "["|"]"|"("|")"|"{"|"}"|"."|"-"|">"|"++"|"--"|"&
 "_Complex"                      { return _COMPLEX; }
 "_Imaginary"                    { return _IMAGINARY; }
 
-
+    
 {identifier}                    { yylval.idval = strdup(yytext); return IDENTIFIER; }
 {integer_constant}              { yylval.intval = atoi(yytext); return INTEGER_CONSTANT; }
 {floating_constant}             { yylval.floatval = atof(yytext); return FLOATING_CONSTANT; }
@@ -94,12 +95,12 @@ punctuators                     "["|"]"|"("|")"|"{"|"}"|"."|"-"|">"|"++"|"--"|"&
     /* Regex for single line comments will be active only when // is read */
 "//"                            { BEGIN(single_line); }
 <single_line>.                  { }
-<single_line>\n                 { BEGIN(INITIAL);}
+<single_line>\n                 { BEGIN(INITIAL);lineno++;}
 
     /* Regex for multi line comments will be active only when /* is read */
 "/*"                            { BEGIN(multi_line); }
 <multi_line>.                   { }
-<multi_line>\n                  { }
+<multi_line>\n                  { lineno++;}
 <multi_line>"*/"                { BEGIN(INITIAL);}
 
 "["                             { return LEFT_SQUARE; }
@@ -151,8 +152,8 @@ punctuators                     "["|"]"|"("|")"|"{"|"}"|"."|"-"|">"|"++"|"--"|"&
 "^="                            { return BITWISE_XOR_ASSIGNMENT; }
 
 
-{WHITESPACE}                    { }
-{NEWLINE}                       { lineno++; }
+{ws}                            { }
+{newline}                       { lineno++; }
 .                               { printf("ERROR (Line number: %d) : Invalid token %s\n", lineno, yytext); return INVALID; }
 
 %%
