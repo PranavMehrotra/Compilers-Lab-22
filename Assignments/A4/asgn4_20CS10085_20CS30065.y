@@ -209,28 +209,28 @@ assignment_expression: conditional_expression
                      | unary_expression assignment_operator assignment_expression
                      ;
 
-assignment_operator: = 
-                   | *= 
-                   | /= 
-                   | %= 
-                   | += 
-                   | -= 
-                   | <<= 
-                   | >>= 
-                   | &= 
-                   | ^= 
-                   | |=
+assignment_operator: ASSIGNMENT 
+                   | MUL_ASSIGNMENT 
+                   | DIV_ASSIGNMENT 
+                   | MODULO_ASSIGNMENT 
+                   | PLUS_ASSIGNMENT 
+                   | MINUS_ASSIGNMENT 
+                   | LEFT_SHIFT_ASSIGNMENT 
+                   | RIGHT_SHIFT_ASSIGNMENT 
+                   | BITWISE_AND_ASSIGNMENT 
+                   | BITWISE_XOR_ASSIGNMENT 
+                   | BITWISE_OR_ASSIGNMENT
                    ;
 
 expression: assignment_expression
-          | expression , assignment_expression
+          | expression COMMA assignment_expression
           ;
 
 constant_expression: conditional_expression
                    ;
 
 
-declaration: declaration_specifiers init_declarator_listopt ;
+declaration: declaration_specifiers init_declarator_listopt SEMI_COLON
            ;
 
 declaration_specifiers: storage_class_specifier declaration_specifiersopt
@@ -240,32 +240,32 @@ declaration_specifiers: storage_class_specifier declaration_specifiersopt
                       ;
 
 init_declarator_list: init_declarator
-                    | init_declarator_list , init_declarator
+                    | init_declarator_list COMMA init_declarator
                     ;
 
 init_declarator: declarator
-               | declarator = initializer
+               | declarator ASSIGNMENT initializer
                ;
 
 
-storage_class_specifier: extern
-                       | static
-                       | auto
-                       | register
+storage_class_specifier: EXTERN
+                       | STATIC
+                       | AUTO
+                       | REGISTER
                        ;
 
-type_specifier: void
-              | char
-              | short
-              | int
-              | long
-              | float
-              | double
-              | signed
-              | unsigned
-              | _Bool
-              | _Complex
-              | _Imaginary
+type_specifier: VOID
+              | CHAR
+              | SHORT
+              | INT
+              | LONG
+              | FLOAT
+              | DOUBLE
+              | SIGNED
+              | UNSIGNED
+              | _BOOL
+              | _COMPLEX
+              | _IMAGINARY
               | enum_specifier
               ;
 
@@ -273,55 +273,57 @@ specifier_qualifier_list: type_specifier specifier_qualifier_listopt
                         | type_qualifier specifier_qualifier_listopt
                         ;
 
-enum_specifier: enum IDENTIFIERopt { enumerator_list }
-              | enum IDENTIFIERopt { enumerator_list , }
+enum_specifier: enum IDENTIFIERopt LEFT_CURLY enumerator_list RIGHT_CURLY
+              | enum IDENTIFIERopt LEFT_CURLY enumerator_list COMMA RIGHT_CURLY
               | enum IDENTIFIER
               ;
 
 enumerator_list: enumerator
-               | enumerator_list , enumerator
+               | enumerator_list COMMA enumerator
                ;
 
 enumerator: enumeration_constant
-          | enumeration_constant = constant_expression
+          | enumeration_constant ASSIGNMENT constant_expression
           ;
 
-type_qualifier: const
-              | restrict
-              | volatile
+type_qualifier: CONST
+              | RESTRICT
+              | VOLATILE
               ;
 
-function_specifier: inline
+function_specifier: INLINE
                   ;
 
 declarator: pointeropt direct_declarator
           ;
 
 direct_declarator: IDENTIFIER
-                 | ( declarator )
-                 | direct_declarator [ type_qualifier_listopt assignment_expressionopt ]
+                 | LEFT_PARENTHESES declarator RIGHT_PARENTHESES
+                 | direct_declarator LEFT_SQUARE type_qualifier_listopt assignment_expressionopt RIGHT_SQUARE
                  | direct_declarator
-                       [ static type_qualifier_listopt assignment_expression ]
-                 | direct_declarator [ type_qualifier_list static assignment_expression ]
-                 | direct_declarator [ type_qualifier_listopt * ]
-                 | direct_declarator ( parameter_type_list )
-                 | direct_declarator ( IDENTIFIER_listopt )
+                       LEFT_SQUARE STATIC type_qualifier_listopt assignment_expression RIGHT_SQUARE
+                 | direct_declarator LEFT_SQUARE type_qualifier_list STATIC assignment_expression RIGHT_SQUARE
+                 | direct_declarator LEFT_SQUARE type_qualifier_listopt MUL RIGHT_SQUARE
+                 | direct_declarator LEFT_PARENTHESES parameter_type_list RIGHT_PARENTHESES
+                 | direct_declarator LEFT_PARENTHESES IDENTIFIER_listopt RIGHT_PARENTHESES
                  ;
 
-pointer: * type_qualifier_listopt
-       | * type_qualifier_listopt pointer
-       | type_qualifier_list:
+pointer: MUL type_qualifier_listopt
+       | MUL type_qualifier_listopt pointer
+       ;
+
+type_qualifier_list:
        | type_qualifier
        | type_qualifier_list type_qualifier
        ;
 
 parameter_type_list: parameter_list
-                   | parameter_list , ...
+                   | parameter_list , ELLIPSIS
                    ;
 
 
 parameter_list: parameter_declaration
-              | parameter_list , parameter_declaration
+              | parameter_list COMMA parameter_declaration
               ;
 
 parameter_declaration: declaration_specifiers declarator
@@ -329,7 +331,7 @@ parameter_declaration: declaration_specifiers declarator
                      ;
 
 IDENTIFIER_list: IDENTIFIER
-               | IDENTIFIER_list , IDENTIFIER
+               | IDENTIFIER_list COMMA IDENTIFIER
                ;
 
 type_name: specifier_qualifier_list
@@ -337,23 +339,23 @@ type_name: specifier_qualifier_list
 
 
 initializer: assignment_expression
-           | { initializer_list }
-           | { initializer_list , }
+           | LEFT_CURLY initializer_list RIGHT_CURLY
+           | LEFT_CURLY initializer_list COMMA RIGHT_CURLY
            ;
 
 initializer_list: designationopt initializer
-                | initializer_list , designationopt initializer
+                | initializer_list COMMA designationopt initializer
                 ;
 
-designation: designator_list =
+designation: designator_list ASSIGNMENT
            ;
 
 designator_list: designator
                | designator_list designator
                ;
 
-designator: [ constant_expression ]
-          | . IDENTIFIER
+designator: LEFT_SQUARE constant_expression RIGHT_SQUARE
+          | DOT IDENTIFIER
           ;
 
 statement: labeled_statement
@@ -364,41 +366,43 @@ statement: labeled_statement
          | jump_statement
          ;
 
-labeled_statement: IDENTIFIER : statement
-                 | case constant_expression : statement
+labeled_statement: IDENTIFIER COLON statement
+                 | CASE constant_expression COLON statement
                  ;
 
 default : statement
         ;
 
-compound_statement: { block_item_listopt }
-                  | block_item_list:
-                  | block_item
-                  | block_item_list block_item
+compound_statement: LEFT_CURLY block_item_listopt RIGHT_CURLY
                   ;
+
+block_item_list:
+                | block_item
+                | block_item_list block_item
+                ;
 
 block_item: declaration
           | statement
           ;
 
-expression_statement: expressionopt ;
+expression_statement: expressionopt SEMI_COLON
                     ;
 
-selection_statement: if ( expression ) statement
-                   | if ( expression ) statement else statement 
-                   | switch ( expression ) statement
+selection_statement: IF LEFT_PARENTHESES expression RIGHT_PARENTHESES statement
+                   | IF LEFT_PARENTHESES expression RIGHT_PARENTHESES statement ELSE statement 
+                   | SWITCH LEFT_PARENTHESES expression RIGHT_PARENTHESES statement
                    ;
 
-iteration_statement: while ( expression ) statement
-                   | do statement while ( expression ) ;
-                   | for ( expressionopt ; expressionopt ; expressionopt ) statement
-                   | for ( declaration expressionopt ; expressionopt ) statement
+iteration_statement: WHILE LEFT_PARENTHESES expression RIGHT_PARENTHESES statement
+                   | DO statement WHILE LEFT_PARENTHESES expression RIGHT_PARENTHESES SEMI_COLON
+                   | FOR LEFT_PARENTHESES expressionopt SEMI_COLON expressionopt SEMI_COLON expressionopt RIGHT_PARENTHESES statement
+                   | FOR LEFT_PARENTHESES declaration expressionopt SEMI_COLON expressionopt RIGHT_PARENTHESES statement
                    ;
 
-jump_statement: goto IDENTIFIER ;
-              | continue ;
-              | break ;
-              | return expressionopt ;
+jump_statement: GOTO IDENTIFIER SEMI_COLON
+              | CONTINUE SEMI_COLON
+              | BREAK SEMI_COLON
+              | RETURN expressionopt SEMI_COLON
               ;
 
 translation_unit: external_declaration
