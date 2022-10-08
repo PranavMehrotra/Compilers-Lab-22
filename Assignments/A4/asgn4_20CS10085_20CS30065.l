@@ -26,7 +26,7 @@ delim                           {ws}+
 
 identifier                      {id_non_digit}{id_digit}*
 
-integer_constant                {nonzero_digit}{digit}*
+integer_constant                {nonzero_digit}{digit}*|"0"
 
 fractional_constant             {digit_seq}?\.{digit_seq}|{digit_seq}\.
 exponent                        [eE]{sign}?{digit_seq}
@@ -72,10 +72,7 @@ punctuators                     "["|"]"|"("|")"|"{"|"}"|"."|"-"|">"|"++"|"--"|"&
 "signed"                        { return SIGNED; }
 "sizeof"                        { return SIZEOF; }
 "static"                        { return STATIC; }
-"struct"                        { return STRUCT; }
 "switch"                        { return SWITCH; }
-"typedef"                       { return TYPEDEF; }
-"union"                         { return UNION; }
 "unsigned"                      { return UNSIGNED; }
 "void"                          { return VOID; }
 "volatile"                      { return VOLATILE; }
@@ -104,10 +101,10 @@ punctuators                     "["|"]"|"("|")"|"{"|"}"|"."|"-"|">"|"++"|"--"|"&
 <multi_line>"*/"                { BEGIN(INITIAL);}
 
 "["                             { return LEFT_SQUARE; }
-"++"                            { return SELF_INCREMENT; }
+"++"                            { return SELF_INCREASE ; }
 "/"                             { return F_SLASH; }
 "?"                             { return QUESTION_MARK; }
-"="                             { return ASSIGNMENT; }
+"="                             { return ASSIGN ; }
 ","                             { return COMMA; }
 "]"                             { return RIGHT_SQUARE; }
 "("                             { return LEFT_PARENTHESES; }
@@ -125,19 +122,18 @@ punctuators                     "["|"]"|"("|")"|"{"|"}"|"."|"-"|">"|"++"|"--"|"&
 ">>"                            { return RIGHT_SHIFT; }
 "<"                             { return LESS_THAN; }
 ">"                             { return GREATER_THAN; }
-"<="                            { return LESS_EQUAL_THAN; }
-">="                            { return GREATER_EQUAL_THAN; }
+"<="                            { return  LESS_THAN_EQUAL; }
+">="                            { return GREATER_THAN_EQUAL; }
 ":"                             { return COLON; }
 ";"                             { return SEMI_COLON; }
 "..."                           { return ELLIPSIS; }
-"*="                            { return MUL_ASSIGNMENT; }
-"/="                            { return DIV_ASSIGNMENT; }
-"%="                            { return MODULO_ASSIGNMENT; }
-"+="                            { return PLUS_ASSIGNMENT; }
-"-="                            { return MINUS_ASSIGNMENT; }
-"<<="                           { return LEFT_SHIFT_ASSIGNMENT; }
-"#"                             { return HASH; }
-"--"                            { return SELF_DECREMENT; }
+"*="                            { return MUL_ASSIGN ; }
+"/="                            { return DIV_ASSIGN ; }
+"%="                            { return MODULO_ASSIGN ; }
+"+="                            { return PLUS_ASSIGN ; }
+"-="                            { return MINUS_ASSIGN ; }
+"<<="                           { return LEFT_SHIFT_ASSIGN ; }
+"--"                            { return SELF_DECREASE ; }
 ")"                             { return RIGHT_PARENTHESES; }
 "&"                             { return BITWISE_AND; }
 "=="                            { return EQUAL; }
@@ -145,15 +141,15 @@ punctuators                     "["|"]"|"("|")"|"{"|"}"|"."|"-"|">"|"++"|"--"|"&
 "|"                             { return BITWISE_OR; }
 "&&"                            { return LOGICAL_AND; }
 "||"                            { return LOGICAL_OR; }
-">>="                           { return RIGHT_SHIFT_ASSIGNMENT; }
+">>="                           { return RIGHT_SHIFT_ASSIGN ; }
 "!="                            { return NOT_EQUAL; }
-"&="                            { return BITWISE_AND_ASSIGNMENT; }
-"|="                            { return BITWISE_OR_ASSIGNMENT; }
-"^="                            { return BITWISE_XOR_ASSIGNMENT; }
+"&="                            { return BITWISE_AND_ASSIGN ; }
+"|="                            { return BITWISE_OR_ASSIGN ; }
+"^="                            { return BITWISE_XOR_ASSIGN ; }
 
 
 {ws}                            { }
-{newline}                       { lineno++; }
+{newline}                       { lineno++; printf("---------Line no: %d ----------\n",lineno);}
 .                               { printf("ERROR (Line number: %d) : Invalid token %s\n", lineno, yytext); return INVALID; }
 
 %%

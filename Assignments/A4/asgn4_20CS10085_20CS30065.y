@@ -1,7 +1,8 @@
 %{
 #include <string.h>
-#include <iostream>
+#include <stdio.h>
 extern int yylex();
+extern int lineno;
 void yyerror(char *s);
 %}
 
@@ -13,9 +14,6 @@ void yyerror(char *s);
     char *idval;
 }
 
-%token _BOOL
-%token _COMPLEX
-%token _IMAGINARY
 %token AUTO
 %token BREAK
 %token CASE 
@@ -25,6 +23,7 @@ void yyerror(char *s);
 %token DEFAULT
 %token DO
 %token DOUBLE
+%token ELSE
 %token ENUM
 %token EXTERN
 %token FLOAT
@@ -42,11 +41,13 @@ void yyerror(char *s);
 %token SIZEOF
 %token STATIC
 %token SWITCH
-%token UNION
 %token UNSIGNED
 %token VOID
 %token VOLATILE
 %token WHILE
+%token _BOOL
+%token _COMPLEX
+%token _IMAGINARY
 
 %token<stringval> IDENTIFIER
 %token<intval> INTEGER_CONSTANT
@@ -54,13 +55,11 @@ void yyerror(char *s);
 %token<charval> CHARACTER_CONSTANT
 %token<idval> STRING_LITERAL
 
-
-
 %token LEFT_SQUARE
-%token SELF_INCREMENT
+%token SELF_INCREASE 
 %token F_SLASH
 %token QUESTION_MARK
-%token ASSIGNMENT
+%token ASSIGN 
 %token COMMA
 %token RIGHT_SQUARE
 %token LEFT_PARENTHESES
@@ -78,19 +77,18 @@ void yyerror(char *s);
 %token RIGHT_SHIFT
 %token LESS_THAN
 %token GREATER_THAN
-%token LESS_EQUAL_THAN
-%token GREATER_EQUAL_THAN
+%token LESS_THAN_EQUAL
+%token GREATER_THAN_EQUAL
 %token COLON
 %token SEMI_COLON
 %token ELLIPSIS
-%token MUL_ASSIGNMENT
-%token DIV_ASSIGNMENT
-%token MODULO_ASSIGNMENT
-%token PLUS_ASSIGNMENT
-%token MINUS_ASSIGNMENT
-%token LEFT_SHIFT_ASSIGNMENT
-%token HASH
-%token SELF_DECREMENT
+%token MUL_ASSIGN 
+%token DIV_ASSIGN 
+%token MODULO_ASSIGN 
+%token PLUS_ASSIGN 
+%token MINUS_ASSIGN 
+%token LEFT_SHIFT_ASSIGN 
+%token SELF_DECREASE 
 %token RIGHT_PARENTHESES
 %token BITWISE_AND
 %token EQUAL
@@ -98,48 +96,69 @@ void yyerror(char *s);
 %token BITWISE_OR
 %token LOGICAL_AND
 %token LOGICAL_OR
-%token RIGHT_SHIFT_ASSIGNMENT
+%token RIGHT_SHIFT_ASSIGN 
 %token NOT_EQUAL
-%token BITWISE_AND_ASSIGNMENT
-%token BITWISE_OR_ASSIGNMENT
-%token BITWISE_XOR_ASSIGNMENT
+%token BITWISE_AND_ASSIGN 
+%token BITWISE_OR_ASSIGN 
+%token BITWISE_XOR_ASSIGN 
 
 %token INVALID
 
 %nonassoc RIGHT_PARENTHESES
 %nonassoc ELSE
+
+
 %start translation_unit
 
 %%
 primary_expression: IDENTIFIER
+                  { printf("Line Number: %d  | Production: primary_expression ==> IDENTIFIER\n",lineno); printf("\tIDENTIFIER Value = %s\n", $1); }
                   | INTEGER_CONSTANT
+                  { printf("Line Number: %d  | Production: primary_expression ==> INTEGER_CONSTANT\n",lineno); printf("\tINTEGER Value = %d\n", $1); }
                   | FLOATING_CONSTANT
+                  { printf("Line Number: %d  | Production: primary_expression ==> FLOATING_CONSTANT\n",lineno); printf("\tFLOAT Value = %f\n", $1); }
                   | CHARACTER_CONSTANT
+                  { printf("Line Number: %d  | Production: primary_expression ==> CHARACTER_CONSTANT\n",lineno); printf("\tCHAR Value = %s\n", $1); }
                   | STRING_LITERAL
+                  { printf("Line Number: %d  | Production: primary_expression ==> STRING_LITERAL\n",lineno); printf("\tSTRING Value = %s\n", $1); }
                   | LEFT_PARENTHESES expression RIGHT_PARENTHESES
+                  { printf("Line Number: %d  | Production: primary_expression ==> ( expression ) \n",lineno);}
                   ;
 
 postfix_expression: primary_expression
+                  { printf("Line Number: %d  | Production: postfix_expression ==> primary_expression \n",lineno); }
                   | postfix_expression LEFT_SQUARE expression RIGHT_SQUARE
+                  { printf("Line Number: %d  | Production: postfix_expression ==> postfix_expression [ primary_expression ] \n",lineno); }
                   | postfix_expression LEFT_PARENTHESES argument_expression_listopt RIGHT_PARENTHESES
+                  { printf("Line Number: %d  | Production: postfix_expression ==> postfix_expression ( primary_expression )\n",lineno); }
                   | postfix_expression DOT IDENTIFIER
+                  { printf("Line Number: %d  | Production: postfix_expression ==> postfix_expression . IDENTIFIER \n",lineno);printf("\t IDENTIFIER Value = %s\n",$3); }
                   | postfix_expression ARROW IDENTIFIER
-                  | postfix_expression SELF_INCREMENT
-                  | postfix_expression SELF_DECREMENT
+                  { printf("Line Number: %d  | Production: postfix_expression ==> postfix_expression => IDENTIFIER \n",lineno);printf("\t IDENTIFIER Value = %s\n",$3); }
+                  | postfix_expression SELF_INCREASE
+                  { printf("Line Number: %d  | Production: postfix_expression ==> postfix_expression ++ \n",lineno); }
+                  | postfix_expression SELF_DECREASE 
+                  { printf("Line Number: %d  | Production: postfix_expression ==> postfix_expression -- \n",lineno); }
                   | LEFT_PARENTHESES type_name RIGHT_PARENTHESES LEFT_CURLY initializer_list RIGHT_CURLY
+                  { printf("Line Number: %d  | Production: postfix_expression =>( type_name ){ initialiser_list } \n",lineno); }
                   | LEFT_PARENTHESES type_name RIGHT_PARENTHESES LEFT_CURLY initializer_list COMMA RIGHT_CURLY
+                  { printf("Line Number: %d  | Production: postfix_expression => ( type_name ){ initialiser_list , } \n",lineno);  }
                   ;
+
+argument_expression_listopt: argument_expression_list
+                            |
+                            ;
 
 argument_expression_list: assignment_expression
                         | argument_expression_list COMMA assignment_expression
                         ;
 
 unary_expression: postfix_expression
-                | SELF_INCREMENT unary_expression
-                | SELF_DECREMENT unary_expression
+                | SELF_INCREASE  unary_expression
+                | SELF_DECREASE  unary_expression
                 | unary_operator cast_expression
-                | sizeof unary_expression
-                | sizeof LEFT_PARENTHESES type_name RIGHT_PARENTHESES
+                | SIZEOF unary_expression
+                | SIZEOF LEFT_PARENTHESES type_name RIGHT_PARENTHESES
                 ;
 
 unary_operator: BITWISE_AND 
@@ -173,8 +192,8 @@ shift_expression: additive_expression
 relational_expression: shift_expression
                      | relational_expression LESS_THAN shift_expression
                      | relational_expression GREATER_THAN shift_expression
-                     | relational_expression LESS_EQUAL_THAN shift_expression
-                     | relational_expression GREATER_EQUAL_THAN shift_expression
+                     | relational_expression LESS_THAN_EQUAL shift_expression
+                     | relational_expression GREATER_THAN_EQUAL shift_expression
                      ;
 
 equality_expression: relational_expression
@@ -209,17 +228,17 @@ assignment_expression: conditional_expression
                      | unary_expression assignment_operator assignment_expression
                      ;
 
-assignment_operator: ASSIGNMENT 
-                   | MUL_ASSIGNMENT 
-                   | DIV_ASSIGNMENT 
-                   | MODULO_ASSIGNMENT 
-                   | PLUS_ASSIGNMENT 
-                   | MINUS_ASSIGNMENT 
-                   | LEFT_SHIFT_ASSIGNMENT 
-                   | RIGHT_SHIFT_ASSIGNMENT 
-                   | BITWISE_AND_ASSIGNMENT 
-                   | BITWISE_XOR_ASSIGNMENT 
-                   | BITWISE_OR_ASSIGNMENT
+assignment_operator: ASSIGN  
+                   | MUL_ASSIGN  
+                   | DIV_ASSIGN  
+                   | MODULO_ASSIGN  
+                   | PLUS_ASSIGN  
+                   | MINUS_ASSIGN  
+                   | LEFT_SHIFT_ASSIGN  
+                   | RIGHT_SHIFT_ASSIGN  
+                   | BITWISE_AND_ASSIGN  
+                   | BITWISE_XOR_ASSIGN  
+                   | BITWISE_OR_ASSIGN 
                    ;
 
 expression: assignment_expression
@@ -233,18 +252,26 @@ constant_expression: conditional_expression
 declaration: declaration_specifiers init_declarator_listopt SEMI_COLON
            ;
 
+init_declarator_listopt: init_declarator_list
+                        |
+                        ;
+
 declaration_specifiers: storage_class_specifier declaration_specifiersopt
                       | type_specifier declaration_specifiersopt
                       | type_qualifier declaration_specifiersopt
                       | function_specifier declaration_specifiersopt
                       ;
 
+declaration_specifiersopt: declaration_specifiers
+                         |
+                         ;
+
 init_declarator_list: init_declarator
                     | init_declarator_list COMMA init_declarator
                     ;
 
 init_declarator: declarator
-               | declarator ASSIGNMENT initializer
+               | declarator ASSIGN  initializer
                ;
 
 
@@ -273,17 +300,25 @@ specifier_qualifier_list: type_specifier specifier_qualifier_listopt
                         | type_qualifier specifier_qualifier_listopt
                         ;
 
-enum_specifier: enum IDENTIFIERopt LEFT_CURLY enumerator_list RIGHT_CURLY
-              | enum IDENTIFIERopt LEFT_CURLY enumerator_list COMMA RIGHT_CURLY
-              | enum IDENTIFIER
+specifier_qualifier_listopt: specifier_qualifier_list
+                           |
+                           ;
+
+enum_specifier: ENUM identifieropt LEFT_CURLY enumerator_list RIGHT_CURLY
+              | ENUM identifieropt LEFT_CURLY enumerator_list COMMA RIGHT_CURLY
+              | ENUM IDENTIFIER
+              ;
+
+identifieropt: IDENTIFIER
+              | 
               ;
 
 enumerator_list: enumerator
                | enumerator_list COMMA enumerator
                ;
 
-enumerator: enumeration_constant
-          | enumeration_constant ASSIGNMENT constant_expression
+enumerator: IDENTIFIER
+          | IDENTIFIER ASSIGN  constant_expression
           ;
 
 type_qualifier: CONST
@@ -297,28 +332,44 @@ function_specifier: INLINE
 declarator: pointeropt direct_declarator
           ;
 
+pointeropt: pointer
+           |
+           ;
+
 direct_declarator: IDENTIFIER
                  | LEFT_PARENTHESES declarator RIGHT_PARENTHESES
                  | direct_declarator LEFT_SQUARE type_qualifier_listopt assignment_expressionopt RIGHT_SQUARE
-                 | direct_declarator
-                       LEFT_SQUARE STATIC type_qualifier_listopt assignment_expression RIGHT_SQUARE
+                 | direct_declarator LEFT_SQUARE STATIC type_qualifier_listopt assignment_expression RIGHT_SQUARE
                  | direct_declarator LEFT_SQUARE type_qualifier_list STATIC assignment_expression RIGHT_SQUARE
                  | direct_declarator LEFT_SQUARE type_qualifier_listopt MUL RIGHT_SQUARE
                  | direct_declarator LEFT_PARENTHESES parameter_type_list RIGHT_PARENTHESES
-                 | direct_declarator LEFT_PARENTHESES IDENTIFIER_listopt RIGHT_PARENTHESES
+                 | direct_declarator LEFT_PARENTHESES identifier_listopt RIGHT_PARENTHESES
                  ;
+
+type_qualifier_listopt: type_qualifier_list
+                      | 
+                      ;
+
+assignment_expressionopt: assignment_expression
+                        |
+                        ;
+
+
+identifier_listopt: identifier_list
+                  |
+                  ;
 
 pointer: MUL type_qualifier_listopt
        | MUL type_qualifier_listopt pointer
        ;
 
-type_qualifier_list:
-       | type_qualifier
-       | type_qualifier_list type_qualifier
-       ;
+
+type_qualifier_list: type_qualifier
+                    | type_qualifier_list type_qualifier
+                    ;
 
 parameter_type_list: parameter_list
-                   | parameter_list , ELLIPSIS
+                   | parameter_list COMMA ELLIPSIS
                    ;
 
 
@@ -330,8 +381,8 @@ parameter_declaration: declaration_specifiers declarator
                      | declaration_specifiers
                      ;
 
-IDENTIFIER_list: IDENTIFIER
-               | IDENTIFIER_list COMMA IDENTIFIER
+identifier_list: IDENTIFIER
+               | identifier_list COMMA IDENTIFIER
                ;
 
 type_name: specifier_qualifier_list
@@ -347,7 +398,11 @@ initializer_list: designationopt initializer
                 | initializer_list COMMA designationopt initializer
                 ;
 
-designation: designator_list ASSIGNMENT
+designationopt: designation
+               |
+               ;
+
+designation: designator_list ASSIGN 
            ;
 
 designator_list: designator
@@ -368,16 +423,17 @@ statement: labeled_statement
 
 labeled_statement: IDENTIFIER COLON statement
                  | CASE constant_expression COLON statement
+                 | DEFAULT COLON statement
                  ;
-
-default : statement
-        ;
 
 compound_statement: LEFT_CURLY block_item_listopt RIGHT_CURLY
                   ;
 
-block_item_list:
-                | block_item
+block_item_listopt: block_item_list
+                  |
+                  ;
+
+block_item_list: block_item
                 | block_item_list block_item
                 ;
 
@@ -387,6 +443,10 @@ block_item: declaration
 
 expression_statement: expressionopt SEMI_COLON
                     ;
+
+expressionopt: expression
+              |
+              ;
 
 selection_statement: IF LEFT_PARENTHESES expression RIGHT_PARENTHESES statement
                    | IF LEFT_PARENTHESES expression RIGHT_PARENTHESES statement ELSE statement 
@@ -416,8 +476,16 @@ external_declaration: function_definition
 function_definition: declaration_specifiers declarator declaration_listopt compound_statement
                    ;
 
+declaration_listopt: declaration_list
+                     |
+                     ;
+
 declaration_list: declaration
                 | declaration_list declaration
                 ;
                 
 %%
+
+void yyerror(char* s) {
+    printf("ERROR [Line %d] : %s\n", lineno, s);
+}
