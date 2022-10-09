@@ -92,12 +92,12 @@ punctuators                     "["|"]"|"("|")"|"{"|"}"|"."|"-"|">"|"++"|"--"|"&
     /* Regex for single line comments will be active only when // is read */
 "//"                            { BEGIN(single_line); }
 <single_line>.                  { }
-<single_line>\n                 { BEGIN(INITIAL);lineno++;}
+<single_line>\n                 { BEGIN(INITIAL);lineno++;printf("\n-------------------------------------------------------- Line no: %d --------------------------------------------------------\n",lineno);}
 
     /* Regex for multi line comments will be active only when /* is read */
 "/*"                            { BEGIN(multi_line); }
 <multi_line>.                   { }
-<multi_line>\n                  { lineno++;}
+<multi_line>\n                  { lineno++;printf("\n-------------------------------------------------------- Line no: %d --------------------------------------------------------\n",lineno);}
 <multi_line>"*/"                { BEGIN(INITIAL);}
 
 "["                             { return LEFT_SQUARE; }
@@ -149,7 +149,7 @@ punctuators                     "["|"]"|"("|")"|"{"|"}"|"."|"-"|">"|"++"|"--"|"&
 
 
 {ws}                            { }
-{newline}                       { lineno++; printf("---------Line no: %d ----------\n",lineno);}
+{newline}                       { lineno++; printf("\n-------------------------------------------------------- Line no: %d --------------------------------------------------------\n",lineno);}
 .                               { printf("ERROR (Line number: %d) : Invalid token %s\n", lineno, yytext); return INVALID; }
 
 %%
