@@ -809,5 +809,5 @@ declaration_list: declaration
 %%
 
 void yyerror(char* s) {
-    printf("ERROR [Line %d] : %s\n", lineno, s);
+    printf("Error in Line Number: %d ( %s )\n", lineno, s);
 }

@@ -150,6 +150,6 @@ punctuators                     "["|"]"|"("|")"|"{"|"}"|"."|"-"|">"|"++"|"--"|"&
 
 {ws}                            { }
 {newline}                       { lineno++; printf("\n-------------------------------------------------------- Line no: %d --------------------------------------------------------\n",lineno);}
-.                               { printf("ERROR (Line number: %d) : Invalid token %s\n", lineno, yytext); return INVALID; }
+.                               { printf("Error in Line number: %d, Invalid token: %s read\n", lineno, yytext); return INVALID; }
 
 %%
