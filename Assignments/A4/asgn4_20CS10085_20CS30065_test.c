@@ -8,7 +8,7 @@
 */
 
 int function1(int , volatile int );
-inline float function2(char *, int );
+inline float function2(char *a, int );
 extern void func3(int *restrict q);
 
 signed main(){
