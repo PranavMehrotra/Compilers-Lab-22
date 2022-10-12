@@ -1,94 +1,92 @@
 /*
-*   // Nisarg Upadhyaya - 19cs30031
-*   // Animesh Jha - 19cs10070
+    Pranav Mehrotra - 20CS10085
+    Saransh Sharma - 20CS30065
+    //
+    //
+    *
+    *
 */
 
-inline void foo1(int *restrict p1, const int p2, volatile int p3, ...) {
-    auto int a;
-    register int b;
-    extern int c;
-    static int d = 4;
-}
+int function1(int , volatile int );
+inline float function2(char *, int );
+extern void func3(int *restrict q);
 
-const char *foo2(int b[const static 8], int c[static 9], int d[], int e[const *]);
+signed main(){
+    int a,b=-1,c=10;
+    int **t = (int){b,c,21,-32};
+    a = b+c;
+    a<<=1;
+    a>>=1;
+    a%=c;
+    a*=21;
+    a/=2;
+    a-=b;
+    a&=a;
+    a|=a;
+    a^=a;
+    a = (b<c)?1:-1;
 
-enum e1;
-enum e2 { TAG1, TAG2 };
-enum { TAG3 = 0, TAG4 } e3;
+    restart:
 
-signed main() {
-    int a[6] = { 1, 2, [2]=3 };
-    char b[] = "Test string :)";
-    char c1 = 'c';
-    char *c2 = &c1;
-    *c2 = 'a';
-    char **d = (char) { "a", b, "abc" };
+    a = a+ b*c+ c*c + c%a - b;
+    char e1[] = "Hello!", e2 = 'p';
+    e1[1] = 'a';
 
-    unsigned long n1 = +123456789;
-    short n2 = ~16;
-    float n3 = -3.53;
-    double n4 = 2.99e-2;
-    _Bool n5 = !1;
-    double _Complex n6;
-    double _Imaginary n7;
+    unsigned long p1 = 21212324434;
+    double p2 = 3.77e+3;
+    float p3 = 7.794;
+    short p4 = 213;
+    _Bool p5 = !0;
+    _Complex p6;
 
-    n1 = (int) c;
-    n1 = sizeof(int);
-    n1 = sizeof n1;
+    c = (int) p3;
+    b = *(&p4);
+    a = sizeof(b);
 
-    n1 *= n1, n1 /= n1, n1 %= n1;
-    n1 += (n1 -= n1);
-    n1 <<= (n1 >>= n1);
-    n1 &= n1 |= n1 ^= n1;
+    for(int i=0;i<10;i++);
+    for(int i=0;;);
+    for(;;);
+    int i=0;
+    while(i<10){
+        ++i;
+        if(a>=10)   break;
+    }
+    i=5;
+    do{
+        i++;
+        continue;
+    }while(i<10);
 
-    n1 = ( (n1==0 || n1==1) && n1!=n2 ) ? n1 = 0 : n2;
-    a[n2] = n1;
-
-    RANDOM_LOC:
-        if (n3 < n4) {
-
-            switch (n2) {
-                case 0:
-                    n2++;
-                    break;
-                default:
-                    n2--;
-            }
-
-        } else if (n3 > n4) {
-            if(n2 >= n1)
-                n1++;
-        } else {
-            if(n2 <= n1)
-                n2++;
+    if(a<10)    goto restart;
+    else if(a<5){
+        switch (b)
+        {
+        case 0:
+            c=10;
+            break;
+        
+        default:
+            c=5;
+            break;
         }
-    
-    while(n2--)
-        goto RANDOM_LOC;
-
-    for(;;)
-    for(int i;;)
-    for(int i=0, j=1; i!=j; i++) {
-        if(j==1)
-            continue;
+    }
+    else{
+        enum e1;
+        enum e2 { P1, P2 };
+        enum { P3 = 0,  P4 } e3;
+        function1(a,b);
+        function2(e1,c);
     }
 
-    do {
-        n2++;
-    } while(n2 < 0);
-
-    int t1, t2, t3, t4, t5, t6;
-
-    t1 = t1 + t2 - t3 / t4 * t5 % t6;
-    t2 = t2<<2;
-    t2 = t2>>2;
-    t1 = t2 & t3 | t4 ^ t5;
-
-    foo1(1,2,3,4,5,6);
-
-    /* . and -> test */
-    ms1.a = 3;
-    ms2->a = 4;
-
     return 0;
+}
+
+
+
+inline float function2(char *a, int n){
+    auto x = n;
+    const int q1 = 10;
+    static double q2 = 1.1;
+    register short c1;
+    return 1.1;
 }
