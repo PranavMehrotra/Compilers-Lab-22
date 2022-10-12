@@ -1,3 +1,9 @@
+/*
+    Pranav Mehrotra - 20CS10085
+    Saransh Sharma - 20CS30065
+*/
+
+
 #include <stdio.h>
 extern int yyparse();
 
