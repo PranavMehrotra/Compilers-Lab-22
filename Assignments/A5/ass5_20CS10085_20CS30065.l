@@ -1,6 +1,7 @@
 %{
     #include <stdio.h>
     #include <stdlib.h>
+    #include "ass5_20CS10085_20CS30065_translator.h"
     #include "y.tab.h"
     int lineno = 1;
 %}
@@ -83,23 +84,25 @@ punctuators                     "["|"]"|"("|")"|"{"|"}"|"."|"-"|">"|"++"|"--"|"&
 "_Complex"                      { return _COMPLEX; }
 "_Imaginary"                    { return _IMAGINARY; }
 
-    
-{identifier}                    { yylval.idval = strdup(yytext); return IDENTIFIER; }
+    /* for identifier, the synthesised attribute value will be the pointer to the symbol table entry.*/
+{identifier}                    { yylval.idval = curr_symb_table->search_lexeme(yytext); return IDENTIFIER; }
+
+    /* for terminals other than identifier, the terminals will have synthesised attribute value equal to yytext */
 {integer_constant}              { yylval.intval = atoi(yytext); return INTEGER_CONSTANT; }
-{floating_constant}             { yylval.floatval = atof(yytext); return FLOATING_CONSTANT; }
-{char_constant}                 { yylval.charval = strdup(yytext); return CHARACTER_CONSTANT; }
-{string}                        { yylval.stringval = strdup(yytext); return STRING_LITERAL; }
+{floating_constant}             { yylval.floatval = yytext; return FLOATING_CONSTANT; }
+{char_constant}                 { yylval.charval = yytext; return CHARACTER_CONSTANT; }
+{string}                        { yylval.stringval = yytext; return STRING_LITERAL; }
 
 
     /* Regex for single line comments will be active only when // is read */
 "//"                            { BEGIN(single_line); }
 <single_line>.                  { }
-<single_line>\n                 { BEGIN(INITIAL);lineno++;printf("\n-------------------------------------------------------- Line no: %d --------------------------------------------------------\n",lineno);}
+<single_line>\n                 { BEGIN(INITIAL);}
 
     /* Regex for multi line comments will be active only when /* is read */
 "/*"                            { BEGIN(multi_line); }
 <multi_line>.                   { }
-<multi_line>\n                  { lineno++;printf("\n-------------------------------------------------------- Line no: %d --------------------------------------------------------\n",lineno);}
+<multi_line>\n                  { }
 <multi_line>"*/"                { BEGIN(INITIAL);}
 
 "["                             { return LEFT_SQUARE; }
@@ -151,7 +154,7 @@ punctuators                     "["|"]"|"("|")"|"{"|"}"|"."|"-"|">"|"++"|"--"|"&
 
 
 {ws}                            { }
-{newline}                       { lineno++; printf("\n-------------------------------------------------------- Line no: %d --------------------------------------------------------\n",lineno);}
+{newline}                       { lineno++;}
 .                               { printf("Error in Line number: %d, Invalid token: %s read\n", lineno, yytext); return INVALID; }
 
 %%
