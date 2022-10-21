@@ -59,7 +59,7 @@ void yyerror(char *s);
 %token _COMPLEX
 %token _IMAGINARY
 
-%token<symp> IDENTIFIER
+%token<symbol_type> IDENTIFIER
 %token<intval> INTEGER_CONSTANT
 %token<floatval> FLOATING_CONSTANT
 %token<charval> CHARACTER_CONSTANT
@@ -121,58 +121,6 @@ void yyerror(char *s);
 %start translation_unit
 
 // Non-terminals of type unaryOp (unary operator)
-%type <unaryOp> unary_operator
-
-// Non-terminals of type numParams (number of parameters)
-%type <numParams> argument_expression_list argument_expression_listopt
-
-// Non-terminals of type expr (denoting expressions)
-%type <expr> 
-        expression
-        primary_expression 
-        multiplicative_expression
-        additive_expression
-        shift_expression
-        relational_expression
-        equality_expression
-        and_expression
-        exclusive_or_expression
-        inclusive_or_expression
-        logical_and_expression
-        logical_or_expression
-        conditional_expression
-        assignment_expression
-        expression_statement
-
-// Non-terminals of type stmt (denoting statements)
-%type <stmt>
-        statement
-        compound_statement
-        loop_statement
-        selection_statement
-        iteration_statement
-        labeled_statement 
-        jump_statement
-        block_item
-        block_item_list
-        block_item_listopt
-
-// The pointer non-terminal is treated with type symbolType
-%type <symType> pointer
-
-// Non-terminals of type symp (symbol*)
-%type <symp> constant initializer
-%type <symp> direct_declarator init_declarator declarator
-
-// Non-terminals of type arr
-%type <arr> postfix_expression unary_expression cast_expression
-
-// Auxiliary non-terminal M of type instr to help in backpatching
-%type <instr> M
-
-// Auxiliary non-terminal N of type stmt to help in control flow statements
-%type <stmt> N
-
 
 %%
 primary_expression: IDENTIFIER

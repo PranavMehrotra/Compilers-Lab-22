@@ -2,35 +2,40 @@
 #include <iomanip>
 using namespace std;
 
-ST_entry* curr_symbol;              //pointer to current symbol being processed
-symbol_table* curr_symb_table;      //pointer to active symbol table
-symbol_table* global_symb_table;    //pointer to global symbol table
-quad_TAC_TAC_arr quad_TAC_TAC_list;         //list of TAC codes
-int num_ST;                         //number of symbol tables
-string block;                       //for naming nested blocks
+//Global Symbol Declaration
+ST_entry* curr_symbol;                                                              //pointer to current symbol being processed
+symbol_table* curr_symb_table;                                                      //pointer to active symbol table
+symbol_table* global_symb_table;                                                    //pointer to global symbol table
+quad_TAC_arr quad_TAC_list;                                                         //list of TAC codes
+int num_ST;                                                                         //number of symbol tables
+string block;                                                                       //for naming nested blocks
+string prev_var;                                                                    //Used for storing the last encountered type
 
-string prev_var;                    // Used for storing the last encountered type
-
-ST_entry_type::ST_entry_type(string type_, ST_entry_type* derived_arr_, int width_): // constructor for the ST_entry_type class
+//Class ST_entry_type  
+ST_entry_type::ST_entry_type(string type_, ST_entry_type* derived_arr_, int width_):// constructor for the ST_entry_type class
     type(type_), width(width_), derived_arr(derived_arr_) {}                        //parameter intialization
 
+//-------------------------------------------------------------
 
-ST_entry::ST_entry(string name_, string temp, ST_entry_type* derived_arr, int width): name(name_), value("-"), offset(0), nestedTable(NULL) 
+//Class ST_entry
+ST_entry::ST_entry(string name_, string temp, ST_entry_type* derived_arr, int width): name(name_), value("-"), offset(0), nested_symbol_table(NULL) 
 {
     // constructor for the symbol class
     type = new ST_entry_type(temp, derived_arr, width);
     size = type_sizeof(type);
 }
 
-ST_entry* ST_entry::update(ST_entry_type* temp) 
+ST_entry* ST_entry::update_entry(ST_entry_type* temp) 
 {
-     // Member function for the symbol class
+    // Member function for the symbol class
     type = temp;                //update the type of symbol element
     size = type_sizeof(temp);   //update the size i.e. number of bytes corresponding to type
     return this;                //return the present class object
 }
 
+//-------------------------------------------------------------
 
+//Class symbol_table
 symbol_table::symbol_table(string name_): name(name_), temporary_var(0) {} //constructor 
 
 ST_entry* symbol_table::search_lexeme(string name) {
@@ -52,7 +57,7 @@ ST_entry* symbol_table::search_lexeme(string name) {
     //add the symbol to the current symbol table if the sample remained NULL i.e. the symbol doesn't exist 
     if(curr_symb_table == this && sample == NULL) {
         // If the symbol is not found, create the symbol and add it to the symbol table 
-        ST_entry* symbol = new symbol(name);
+        ST_entry* symbol = new ST_entry(name);
         table.push_back(*symbol);
         return &(table.back());
     }
@@ -66,7 +71,7 @@ ST_entry* symbol_table::search_lexeme(string name) {
 
 ST_entry* symbol_table::generate_tem_var(ST_entry_type* temp, string intial_value) {
     // Create the name for the temporary
-    string name = "t" + convertIntToString(curr_symb_table->temporary_var++); //make a t variable
+    string name = "t" + convert_int_str(curr_symb_table->temporary_var++); //make a t variable
     ST_entry* temp_sym = new ST_entry(name);
     temp_sym->type = temp;
     temp_sym->value = intial_value;         // Assign the initial value, if any
@@ -78,16 +83,16 @@ ST_entry* symbol_table::generate_tem_var(ST_entry_type* temp, string intial_valu
 }
 
 void symbol_table::print_ST() {
-    for(int i = 0; i < 120; i++) {
-        cout << '-';
+    for(int i = 0; i < 150; i++) {
+        cout << '*';
     }
     cout << endl;
     cout << "Symbol Table: " << setfill(' ') << left << setw(50) << this->name;
     cout << "Parent Table: " << setfill(' ') << left << setw(50) << ((this->parent != NULL) ? this->parent->name : "NULL") << endl;
-    for(int i = 0; i < 120; i++) {
-        cout << '-';
+    for(int i = 0; i < 150; i++) {
+        cout << '*';
     }
-    cout << endl;
+    cout << "\n";
 
     // Table Headers
     cout << setfill(' ') << left << setw(25) <<  "Name";
@@ -97,172 +102,190 @@ void symbol_table::print_ST() {
     cout << left << setw(15) << "Offset";
     cout << left << "Nested" << endl;
 
-    for(int i = 0; i < 120; i++) {
-        cout << '-';
+    for(int i = 0; i < 150; i++) {
+        cout << '*';
     }
     cout << endl;
 
-    list<symbol_table*> tableList;
+    list<symbol_table*> list_table;
 
     // Print the symbols in the symbol table
-    for(list<ST_entry>::iterator it = this->table.begin(); it != this->table.end(); it++) {
-        cout << left << setw(25) << it->name;
-        cout << left << setw(25) << typecheck(it->type);
-        cout << left << setw(20) << (it->value != "" ? it->value : "-");
-        cout << left << setw(15) << it->size;
-        cout << left << setw(15) << it->offset;
+    //cout<<left makes padding at end and setw sets the width of symbol
+    for(list<ST_entry>::iterator iter = this->table.begin(); iter != this->table.end(); iter++) {
+        cout << left << setw(25) << iter->name;
+        cout << left << setw(25) << check_type(iter->type);
+        cout << left << setw(20) << (iter->value != "" ? iter->value : "nil");
+        cout << left << setw(15) << iter->size;
+        cout << left << setw(15) << iter->offset;
         cout << left;
 
-        if(it->nestedTable != NULL) {
-            cout << it->nestedTable->name << endl;
-            tableList.push_back(it->nestedTable);
+        if(iter->nested_symbol_table != NULL) {
+            cout << iter->nested_symbol_table->name << endl;
+            list_table.push_back(iter->nested_symbol_table);
         }
         else {
             cout << "NULL" << endl;
         }
     }
 
-    for(int i = 0; i < 120; i++) {
-        cout << '-';
+    for(int i = 0; i < 150; i++) {
+        cout << '*';
     }
     cout << endl << endl;
 
     // Recursively call the print function for the nested symbol tables
-    for(list<symbol_table*>::iterator it = tableList.begin(); it != tableList.end(); it++) {
-        (*it)->print();
+    for(list<symbol_table*>::iterator iter = list_table.begin(); iter != list_table.end(); iter++) {
+        (*iter)->print_ST();
     }
 
 }
 
 void symbol_table::update_ST() {
-    list<symbol_table*> tableList;
-    int off_set;
+    list<symbol_table*> list_table;
+    int offset;
 
     // Update the offsets of the symbols based on their sizes
-    for(list<ST_entry>::iterator it = table.begin(); it != table.end(); it++) {
-        if(it == table.begin()) {
-            it->offset = 0;
-            off_set = it->size;
+    for(list<ST_entry>::iterator iter = table.begin(); iter != table.end(); iter++) {
+        if(iter == table.begin()) {
+            iter->offset = 0;
+            offset = iter->size;
         }
         else {
-            it->offset = off_set;
-            off_set = it->offset + it->size;
+            iter->offset = offset;
+            offset = iter->offset + iter->size;
         }
 
-        if(it->nestedTable != NULL) {
-            tableList.push_back(it->nestedTable);
+        if(iter->nested_symbol_table != NULL) {
+            list_table.push_back(iter->nested_symbol_table);
         }
     }
 
     // Recursively call the update function to update the offsets of symbols of the nested symbol tables
-    for(list<symbol_table*>::iterator iter = tableList.begin(); iter != tableList.end(); iter++) {
-        (*iter)->update();
+    for(list<symbol_table*>::iterator iter = list_table.begin(); iter != list_table.end(); iter++) {
+        (*iter)->update_ST();
     }
 }
 
-// Implementations of constructors and functions for the quad_TAC class
-quad_TAC::quad_TAC(string res, string arg1_, string operation, string arg2_): result(res), arg1(arg1_), operation(operation), arg2(arg2_) {}
+//--------------------------------------------------------------------------------------------
 
-quad_TAC::quad_TAC(string res, int arg1_, string operation, string arg2_): result(res), operation(operation), arg2(arg2_) {
-    arg1 = convertIntToString(arg1_);
+
+// Implementations of constructors and functions for the quad_TAC class
+quad_TAC::quad_TAC(string result, string arg1_, string operation, string arg2_): result(result), arg1(arg1_), operation(operation), arg2(arg2_) {}
+
+quad_TAC::quad_TAC(string result, int arg1_, string operation, string arg2_): result(result), operation(operation), arg2(arg2_) {
+    arg1 = convert_int_str(arg1_);
 }
 
-quad_TAC::quad_TAC(string res, float arg1_, string operation, string arg2_): result(res), operation(operation), arg2(arg2_) {
-    arg1 = convertFloatToString(arg1_);
+quad_TAC::quad_TAC(string result, float arg1_, string operation, string arg2_): result(result), operation(operation), arg2(arg2_) {
+    arg1 = convert_float_str(arg1_);
 }
 
 void quad_TAC::print_quad() {
-    if(op == "=")       // Simple assignment
+    if(operation == "=")       // Simple assignment
         cout << result << " = " << arg1;
-    else if(op == "*=")
-        cout << "*" << result << " = " << arg1;
-    else if(op == "[]=")
-        cout << result << "[" << arg1 << "]" << " = " << arg2;
-    else if(op == "=[]")
-        cout << result << " = " << arg1 << "[" << arg2 << "]";
-    else if(op == "goto" || op == "param" || op == "return")
-        cout << op << " " << result;
-    else if(op == "call")
+
+    else if(operation == "call")
         cout << result << " = " << "call " << arg1 << ", " << arg2;
-    else if(op == "label")
+
+    else if(operation == "[]=")
+        cout << result << "[" << arg1 << "]" << " = " << arg2;
+
+    else if(operation == "goto" || operation == "param" || operation == "return")
+        cout << operation << " " << result;        
+    
+    else if(operation == "=[]")
+        cout << result << " = " << arg1 << "[" << arg2 << "]";
+
+    else if(operation == "*=")
+        cout << "*" << result << " = " << arg1;
+    
+    else if(operation == "label")
         cout << result << ": ";
 
     // Binary Operators
-    else if(op == "+" || op == "-" || op == "*" || op == "/" || op == "%" || op == "^" || op == "|" || op == "&" || op == "<<" || op == ">>")
-        cout << result << " = " << arg1 << " " << op << " " << arg2;
+    else if(operation == "+" || operation == "-" || operation == "*" || operation == "/" || operation == "%" || operation == "^" || operation == "|" || operation == "&" || operation == "<<" || operation == ">>")
+        cout << result << " = " << arg1 << " " << operation << " " << arg2;
 
-    // Relational Operators
-    else if(op == "==" || op == "!=" || op == "<" || op == ">" || op == "<=" || op == ">=")
-        cout << "if " << arg1 << " " << op << " " << arg2 << " goto " << result;
+    // Relational operators
+    else if(operation == "==" || operation == "!=" || operation == "<" || operation == ">" || operation == "<=" || operation == ">=")
+        cout << "if " << arg1 << " " << operation << " " << arg2 << " goto " << result;
 
     // Unary operators
-    else if(op == "= &" || op == "= *" || op == "= -" || op == "= ~" || op == "= !")
-        cout << result << " " << op << arg1;
+    else if(operation == "= &" || operation == "= *" || operation == "= -" || operation == "= ~" || operation == "= !")
+        cout << result << " " << operation << arg1;
 
     else
-        cout << "Unknown Operator";
+        cout << "Invalid operator";
 }
 
-// Implementations of constructors and functions for the quad_TACArray class
+//--------------------------------------------------------------------
+
+
+// Implementations of constructors and functions for the quad_TAC_array class
 void quad_TAC_arr::print_quad_list() {
-    for(int i = 0; i < 120; i++) {
-        cout << '-';
+    for(int i = 0; i < 150; i++) {
+        cout << '*';
     }
     cout << endl;
-    cout << "\nTHREE ADDRESS CODE (TAC):" << endl;
-    for(int i = 0; i < 120; i++) {
-        cout << '-';
+    cout << "\nThree Address Code (TAC):" << endl;
+    for(int i = 0; i < 150; i++) {
+        cout << '*';
     }
     cout << endl;
 
-    int cnt = 0;
+    int count = 0;
     // Print each of the quad_TACs one by one
-    for(vector<quad_TAC>::iterator it = this->quad_list.begin(); it != this->quad_list.end(); it++, cnt++) {
-        if(it->op != "label") {
-            cout << left << setw(4) << cnt << ":    ";
-            it->print();
+    for(vector<quad_TAC>::iterator iter = this->quad_list.begin(); iter != this->quad_list.end(); iter++, count++) {
+        if(iter->operation != "label") {
+            cout << left << setw(4) << count << ":    ";
+            iter->print_quad();
         }
         else {
-            cout << endl << left << setw(4) << cnt << ": ";
-            it->print();
+            cout << endl << left << setw(4) << count << ": ";
+            iter->print_quad();
         }
         cout << endl;
     }
 }
 
-// Overloaded emit functions
-void emit(string op, string result, string arg1, string arg2) {
-    quad_TAC* q = new quad_TAC(result, arg1, op, arg2);
-    quad_TACList.quad_TACs.push_back(*q);
+//--------------------------------------------------------------------------------------
+
+
+// Overload add_TAC function
+void add_TAC(string operation, string result, string arg1, string arg2) {
+    quad_TAC* temp = new quad_TAC(result, arg1, operation, arg2);
+    quad_TAC_list.quad_list.push_back(*temp);
 }
 
-void emit(string op, string result, int arg1, string arg2) {
-    quad_TAC* q = new quad_TAC(result, arg1, op, arg2);
-    quad_TACList.quad_TACs.push_back(*q);
+void add_TAC(string operation, string result, int arg1, string arg2) {
+    quad_TAC* temp = new quad_TAC(result, arg1, operation, arg2);
+    quad_TAC_list.quad_list.push_back(*temp);
 }
 
-void emit(string op, string result, float arg1, string arg2) {
-    quad_TAC* q = new quad_TAC(result, arg1, op, arg2);
-    quad_TACList.quad_TACs.push_back(*q);
+void add_TAC(string operation, string result, float arg1, string arg2) {
+    quad_TAC* temp = new quad_TAC(result, arg1, operation, arg2);
+    quad_TAC_list.quad_list.push_back(*temp);
 }
+
+//----------------------------------------------------------------------------------------
 
 // Implementation of the makelist function
 list<int> makelist(int i) {
-    list<int> l(1, i);
-    return l;
+    list<int> list_i(1, i);
+    return list_i;
 }
 
 // Implementation of the merge function
-list<int> merge(list<int> &list1, list<int> &list2) {
+list<int> merge_list(list<int> &list1, list<int> &list2) {
     list1.merge(list2);
     return list1;
 }
 
 // Implementation of the backpatch function
-void backpatch(list<int> l, int address) {
-    string str = convertIntToString(address);
-    for(list<int>::iterator it = l.begin(); it != l.end(); it++) {
-        quad_TACList.quad_TACs[*it].result = str;
+void backpatch(list<int> l, int addr) {
+    string str = convert_int_str(addr);
+    for(list<int>::iterator iter = l.begin(); iter != l.end(); iter++) {
+        quad_TAC_list.quad_list[*iter].result = str;
     }
 }
 
@@ -273,9 +296,9 @@ bool typecheck(ST_entry* &s1, ST_entry* &s2) {
 
     if(typecheck(t1, t2))
         return true;
-    else if(s1 = convertType(s1, t2->type))
+    else if(s1 = convert_type(s1, t2->type))
         return true;
-    else if(s2 = convertType(s2, t1->type))
+    else if(s2 = convert_type(s2, t1->type))
         return true;
     else
         return false;
@@ -293,16 +316,16 @@ bool typecheck(ST_entry_type* t1, ST_entry_type* t2) {
 }
 
 // Implementation of the convertType function
-ST_entry* convertType(ST_entry* s, string t) {
+ST_entry* convert_type(ST_entry* s, string t) {
     ST_entry* temp = symbol_table::generate_tem_var(new ST_entry_type(t));
 
     if(s->type->type == "float") {
         if(t == "int") {
-            emit("=", temp->name, "float2int(" + s->name + ")");
+            add_TAC("=", temp->name, "float2int(" + s->name + ")");
             return temp;
         }
         else if(t == "char") {
-            emit("=", temp->name, "float2char(" + s->name + ")");
+            add_TAC("=", temp->name, "float2char(" + s->name + ")");
             return temp;
         }
         return s;
@@ -310,11 +333,11 @@ ST_entry* convertType(ST_entry* s, string t) {
 
     else if(s->type->type == "int") {
         if(t == "float") {
-            emit("=", temp->name, "int2float(" + s->name + ")");
+            add_TAC("=", temp->name, "int2float(" + s->name + ")");
             return temp;
         }
         else if(t == "char") {
-            emit("=", temp->name, "int2char(" + s->name + ")");
+            add_TAC("=", temp->name, "int2char(" + s->name + ")");
             return temp;
         }
         return s;
@@ -322,11 +345,11 @@ ST_entry* convertType(ST_entry* s, string t) {
 
     else if(s->type->type == "char") {
         if(t == "float") {
-            emit("=", temp->name, "char2float(" + s->name + ")");
+            add_TAC("=", temp->name, "char2float(" + s->name + ")");
             return temp;
         }
         else if(t == "int") {
-            emit("=", temp->name, "char2int(" + s->name + ")");
+            add_TAC("=", temp->name, "char2int(" + s->name + ")");
             return temp;
         }
         return s;
@@ -335,89 +358,89 @@ ST_entry* convertType(ST_entry* s, string t) {
     return s;
 }
 
-string convertIntToString(int i) {
+string convert_int_str(int i) {
     return std::to_string(i);
 }
 
-string convertFloatToString(float f) {
+string convert_float_str(float f) {
     return std::to_string(f);
 }
 
 // Implementation of the convertIntToBool function
-expression* convertIntToBool(expression* expr) {
+expression* convert_int_bool(expression* expr) {
     if(expr->type != "bool") {
-        expr->falselist = makelist(nextinstr());    // Add falselist for boolean expressions
-        emit("==", expr->loc->name, "0");
-        expr->truelist = makelist(nextinstr());     // Add truelist for boolean expressions
-        emit("goto", "");
+        expr->falselist = makelist(next_instr_count());    // Add falselist for boolean expressions
+        add_TAC("==", expr->location->name, "0");
+        expr->truelist = makelist(next_instr_count());     // Add truelist for boolean expressions
+        add_TAC("goto", "");
     }
     return expr;
 }
 
 // Implementation of the convertBoolToInt function
-expression* convertBoolToInt(expression* expr) {
+expression* convert_bool_int(expression* expr) {
     if(expr->type == "bool") {
-        expr->loc = symbol_table::generate_tem_var(new ST_entry_type("int"));
-        backpatch(expr->truelist, nextinstr());
-        emit("=", expr->loc->name, "true");
-        emit("goto", convertIntToString(nextinstr() + 1));
-        backpatch(expr->falselist, nextinstr());
-        emit("=", expr->loc->name, "false");
+        expr->location = symbol_table::generate_tem_var(new ST_entry_type("int"));
+        backpatch(expr->truelist, next_instr_count());
+        add_TAC("=", expr->location->name, "true");
+        add_TAC("goto", convert_int_str(next_instr_count() + 1));
+        backpatch(expr->falselist, next_instr_count());
+        add_TAC("=", expr->location->name, "false");
     }
     return expr;
 }
 
-void switchTable(symbol_table* newTable) {
+void move_to_table(symbol_table* temporary_var) {
     curr_symb_table =temporary_var;
 }
 
-int nextinstr() {
-    return quad_TACList.quad_TACs.size();
+int next_instr_count() {
+    return quad_TAC_list.quad_list.size();
 }
 
 int type_sizeof(ST_entry_type* t) {
     if(t->type == "void")
-        return __VOID_SIZE;
+        return 0;
     else if(t->type == "char")
-        return __CHARACTER_SIZE;
+        return 1;
     else if(t->type == "int")
-        return __INTEGER_SIZE;
+        return 4;
     else if(t->type == "ptr")
-        return __POINTER_SIZE;
+        return 4;
     else if(t->type == "float")
-        return __FLOAT_SIZE;
+        return 8;
     else if(t->type == "arr")
         return t->width * type_sizeof(t->derived_arr);
     else if(t->type == "func")
-        return __FUNCTION_SIZE;
+        return 0;
     else
         return -1;
 }
 
-string checkType(ST_entry_type* t) {
-    if(t == NULL)
+string check_type(ST_entry_type* t_var) {
+    if(t_var == NULL)
         return "null";
-    else if(t->type == "void" || t->type == "char" || t->type == "int" || t->type == "float" || t->type == "block" || t->type == "func")
-        return t->type;
-    else if(t->type == "ptr")
-        return "ptr(" + checkType(t->derived_arr) + ")";
-    else if(t->type == "arr")
-        return "arr(" + convertIntToString(t->width) + ", " + checkType(t->derived_arr) + ")";
+    else if(t_var->type == "void" || t_var->type == "char" || t_var->type == "int" || t_var->type == "float" || t_var->type == "block" || t_var->type == "func")
+        return t_var->type;
+    else if(t_var->type == "ptr")
+        return "ptr(" + check_type(t_var->derived_arr) + ")";
+    else if(t_var->type == "arr")
+        return "arr(" + convert_int_str(t_var->width) + ", " + check_type(t_var->derived_arr) + ")";
     else
         return "unknown";
 }
 
 int main() {
-    STCount = 0;                            // Initialize STCount to 0
-    globalST = new symbol_table("Global");   // Create global symbol table
-    curr_symb_table =temporary_var;                   // Make global symbol table the currently active symbol table
-    blockName = "";
+    num_ST = 0;                            // Initialize STCount to 0
+    global_symb_table = new symbol_table("Global");   // Create global symbol table
+    curr_symb_table =global_symb_table;                   // Make global symbol table the currently active symbol table
+    block = "";
 
     yyparse();
-    globalST->update();
-    quad_TACList.print();       // Print Three Address Code
+    global_symb_table->update_ST();
+    quad_TAC_list.print_quad_list();       // Print Three Address Code
     cout << endl;
-    //globalST->print();      // Print symbol tables
+    //global_symb_table->print();      // Print symbol tables
 
     return 0;
 }

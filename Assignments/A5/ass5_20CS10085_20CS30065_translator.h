@@ -161,58 +161,39 @@ void add_TAC(string operation, string result, string arg1 = "", string arg2 = ""
 void add_TAC(string operation, string result, int arg1, string arg2 = "");       // TAC code for operation between integer and strings
 void add_TAC(string operation, string result, float arg1, string arg2 = "");     // TAC code for operation between float and strings
 
+
+//Auxillary functions for backpatching
+list<int> makelist(int i);
 /*
-    A global function to create a new list containing only i, an index into the array of quads, 
+    to create a new list containing only i, an index into the array of quads, 
     and to return a pointer to the newly created list
 */
-list<int> makelist(int i);
 
+list<int> merge_list(list<int> &list1, list<int> &list2);
 /*
     to concatenate two lists and return a pointer to the concatenated list
 */
-list<int> merge(list<int> &list1, list<int> &list2);
 
-/*
-    to insert address as the target label for each of the quads on the list quad_list
-*/
 void backpatch(list<int> quad_list, int address);
-
 /*
-    Check if the types of the symbols s1 and s2 are same or not
+    inserts i as target label for each of the quads on the list pointed by p
 */
+
+
+//Type compatibility testing function between two symbol table entries or two data types
 bool typecheck(ST_entry* &s1, ST_entry* &s2);
 bool typecheck(ST_entry_type* t1, ST_entry_type* t2);
 
-/*
-    Converts a symbol of one type to another and returns a pointer to the converted symbol
-*/
-ST_entry* convertType(ST_entry* s, string t);
 
-/*
-    Converts an int to a string
-*/
-string convertIntToString(int i);
+// Type conversion functions to make both the data types compatible
+ST_entry* convert_type(ST_entry* s, string t);
+string convert_int_str(int i);               //convert int to string
+string convert_float_str(float f);           //convert float to string
+expression* convert_int_bool(expression* expr); //convert int to boolean
+expression* convert_bool_int(expression* expr); //convert boolean to int
 
-/*
-    Converts a float to a string
-*/
-string convertFloatToString(float f);
-
-/*
-    Converts an int to a bool and adds required attributes
-*/
-expression* convertIntToBool(expression* expr);
-
-/*
-    Converts a bool to an int and adds required attributes
-*/
-expression* convertBoolToInt(expression* expr);
 
 void move_to_table(symbol_table* temp); //to change the currently active symbol table to temp
-
 int next_instr_count(); //count of next instructuin
-
 int type_sizeof(ST_entry_type* t_var); // returns size of a data type
-
-string print_type(ST_entry_type* t_var); // prints type of a symbol
-
+string check_type(ST_entry_type* t_var); // returns type of a symbol
