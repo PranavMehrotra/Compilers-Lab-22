@@ -29,7 +29,7 @@ ST_entry* ST_entry::update_entry(ST_entry_type* temp)
 {
     // Member function for the symbol class
     type = temp;                //update the type of symbol element
-    size = type_sizeof(temp);   //update the size i.e. number of bytes corresponding to type
+    size = type_sizeof(temp);   //update the size i.e. number of bytes corresponding to temp
     return this;                //return the present class object
 }
 
@@ -38,40 +38,47 @@ ST_entry* ST_entry::update_entry(ST_entry_type* temp)
 //Class symbol_table
 symbol_table::symbol_table(string name_): name(name_), temporary_var(0) {} //constructor 
 
-ST_entry* symbol_table::search_lexeme(string name) {
+ST_entry* symbol_table::search_lexeme(string name_var) {
     
     for(list<ST_entry>::iterator iter = table.begin(); iter != table.end(); iter++)
     {
-        if(iter->name == name) //traverse the entire table array  
+        if(iter->name == name_var) //traverse the entire table array, if the name of the variable in the symbol table matches with input name return the address  
         {
             return &(*iter);
         }
     }
 
-    // if the lexeme is not found the table go to the parent table
-    ST_entry* sample = NULL;
-    if(this->parent != NULL) {
-        sample = this->parent->search_lexeme(name);
+    // if the lexeme is not found in the table go to the parent symbol table, if any
+    ST_entry* sample = NULL; //variable to store the pointer to symbol table entry in parent
+    
+    if(this->parent != NULL) { //if parent table exists
+        sample = this->parent->search_lexeme(name_var); //recursively search all the parent tables
     }
 
-    //add the symbol to the current symbol table if the sample remained NULL i.e. the symbol doesn't exist 
+    //after recursive calls to search_lexeme sample would contain pointer to symbol table entry of name_var
+    //if the sample is still NULL, indicating that the variable is encountered for the first time thus create a new ST_entry object and insert it in the current symbol table
+     
     if(curr_symb_table == this && sample == NULL) {
-        // If the symbol is not found, create the symbol and add it to the symbol table 
-        ST_entry* symbol = new ST_entry(name);
-        table.push_back(*symbol);
+        ST_entry* new_symbol = new ST_entry(name_var);
+        
+        table.push_back(*new_symbol);
         return &(table.back());
     }
     else if(sample != NULL) {
-        // If the symbol is found in one of the parent symbol tables, return it
+        // If the symbol was found in any of the parent symbol tables, return teh pointer to symbol table entry of the name_var 
         return sample;
     }
 
-    return NULL;
+    return NULL;//return NULL indicating certain error
 }
 
+//to create a temporary variables that will store intermediate expression values and push them in symbol table
 ST_entry* symbol_table::generate_tem_var(ST_entry_type* temp, string intial_value) {
-    // Create the name for the temporary
-    string name = "t" + convert_int_str(curr_symb_table->temporary_var++); //make a t variable
+    
+    string name = "t" + convert_int_str(curr_symb_table->temporary_var++); //temporary_var keeps a track of temporary variables created still
+    // if temporary_var = 8  then this method will create a new variable with the name t9
+    
+    //create a new ST_entry object with type details from temp variable
     ST_entry* temp_sym = new ST_entry(name);
     temp_sym->type = temp;
     temp_sym->value = intial_value;         // Assign the initial value, if any
@@ -79,35 +86,43 @@ ST_entry* symbol_table::generate_tem_var(ST_entry_type* temp, string intial_valu
 
     // Add the temporary to the symbol table
     curr_symb_table->table.push_back(*temp_sym);
-    return &(curr_symb_table->table.back());
+    return &(curr_symb_table->table.back());//the new temp variable is pushed at the end of the table and pointer to the entry is returned
 }
 
 void symbol_table::print_ST() {
-    for(int i = 0; i < 150; i++) {
+
+    //codes for basic formatting 
+    for(int i = 0; i < 120; i++) 
+    {
         cout << '*';
     }
+
     cout << endl;
-    cout << "Symbol Table: " << setfill(' ') << left << setw(50) << this->name;
+    //setfill sets the remaining character of width with space i.e. name will be printed with a width of 50 where the remaining places are replaced by space
+    cout << "\nSymbol Table: " << setfill(' ') << left << setw(50) << this->name; //print the Symbol table name with appropriate format
     cout << "Parent Table: " << setfill(' ') << left << setw(50) << ((this->parent != NULL) ? this->parent->name : "NULL") << endl;
-    for(int i = 0; i < 150; i++) {
+    
+    for(int i = 0; i < 120; i++) 
+    {
         cout << '*';
     }
     cout << "\n";
 
-    // Table Headers
-    cout << setfill(' ') << left << setw(25) <<  "Name";
-    cout << left << setw(25) << "Type";
-    cout << left << setw(20) << "Initial Value";
-    cout << left << setw(15) << "Size";
-    cout << left << setw(15) << "Offset";
-    cout << left << "Nested" << endl;
+    // Symbol Table Column names
+    cout << setfill(' ') << left << setw(25) <<  "Name"; //name of variable
+    cout << left << setw(25) << "Type";                  //type of variable
+    cout << left << setw(20) << "Initial Value";         //intial value of variable if any
+    cout << left << setw(15) << "Size";                  //size of the variable
+    cout << left << setw(15) << "Offset";                //offset to keep track of relative addressing 
+    cout << left << "Nested" << endl;                    //pointer to nested table if any
 
-    for(int i = 0; i < 150; i++) {
+    for(int i = 0; i < 120; i++) 
+    {
         cout << '*';
     }
     cout << endl;
 
-    list<symbol_table*> list_table;
+    list<symbol_table*> list_table;//to keep a list of nested tables 
 
     // Print the symbols in the symbol table
     //cout<<left makes padding at end and setw sets the width of symbol
@@ -119,16 +134,17 @@ void symbol_table::print_ST() {
         cout << left << setw(15) << iter->offset;
         cout << left;
 
+        //in case the symbol table has nested symbol table
         if(iter->nested_symbol_table != NULL) {
-            cout << iter->nested_symbol_table->name << endl;
-            list_table.push_back(iter->nested_symbol_table);
+            cout << iter->nested_symbol_table->name << endl;//print the name of nested symbol table
+            list_table.push_back(iter->nested_symbol_table);//push all nested tabels
         }
         else {
-            cout << "NULL" << endl;
+            cout << "NULL" << endl;//else print null
         }
     }
 
-    for(int i = 0; i < 150; i++) {
+    for(int i = 0; i < 120; i++) {
         cout << '*';
     }
     cout << endl << endl;
@@ -137,17 +153,16 @@ void symbol_table::print_ST() {
     for(list<symbol_table*>::iterator iter = list_table.begin(); iter != list_table.end(); iter++) {
         (*iter)->print_ST();
     }
-
 }
 
-void symbol_table::update_ST() {
+void symbol_table::update_entry() {
     list<symbol_table*> list_table;
     int offset;
 
     // Update the offsets of the symbols based on their sizes
     for(list<ST_entry>::iterator iter = table.begin(); iter != table.end(); iter++) {
         if(iter == table.begin()) {
-            iter->offset = 0;
+            iter->offset = 0;//initial offset =0
             offset = iter->size;
         }
         else {
@@ -162,7 +177,7 @@ void symbol_table::update_ST() {
 
     // Recursively call the update function to update the offsets of symbols of the nested symbol tables
     for(list<symbol_table*>::iterator iter = list_table.begin(); iter != list_table.end(); iter++) {
-        (*iter)->update_ST();
+        (*iter)->update_entry();
     }
 }
 
@@ -185,22 +200,22 @@ void quad_TAC::print_quad() {
         cout << result << " = " << arg1;
 
     else if(operation == "call")
-        cout << result << " = " << "call " << arg1 << ", " << arg2;
+        cout << result << " = " << "call " << arg1 << ", " << arg2;//opcode for function call
 
     else if(operation == "[]=")
-        cout << result << "[" << arg1 << "]" << " = " << arg2;
+        cout << result << "[" << arg1 << "]" << " = " << arg2;//opcode for instructions like a[i] = j
 
     else if(operation == "goto" || operation == "param" || operation == "return")
-        cout << operation << " " << result;        
+        cout << operation << " " << result;//opcode for jumps, function parameter declaration and return instructions        
     
     else if(operation == "=[]")
-        cout << result << " = " << arg1 << "[" << arg2 << "]";
+        cout << result << " = " << arg1 << "[" << arg2 << "]";//opcode for instructions like j = a[i]
 
     else if(operation == "*=")
-        cout << "*" << result << " = " << arg1;
+        cout << "*" << result << " = " << arg1;//opcodes for instructions like *ptr = a;
     
     else if(operation == "label")
-        cout << result << ": ";
+        cout << result << ": ";//opcode for Label
 
     // Binary Operators
     else if(operation == "+" || operation == "-" || operation == "*" || operation == "/" || operation == "%" || operation == "^" || operation == "|" || operation == "&" || operation == "<<" || operation == ">>")
@@ -218,17 +233,17 @@ void quad_TAC::print_quad() {
         cout << "Invalid operator";
 }
 
-//--------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------
 
 
 // Implementations of constructors and functions for the quad_TAC_array class
 void quad_TAC_arr::print_quad_list() {
-    for(int i = 0; i < 150; i++) {
+    for(int i = 0; i < 120; i++) {
         cout << '*';
     }
     cout << endl;
     cout << "\nThree Address Code (TAC):" << endl;
-    for(int i = 0; i < 150; i++) {
+    for(int i = 0; i < 120; i++) {
         cout << '*';
     }
     cout << endl;
@@ -237,11 +252,11 @@ void quad_TAC_arr::print_quad_list() {
     // Print each of the quad_TACs one by one
     for(vector<quad_TAC>::iterator iter = this->quad_list.begin(); iter != this->quad_list.end(); iter++, count++) {
         if(iter->operation != "label") {
-            cout << left << setw(4) << count << ":    ";
+            cout << left << setw(4) << count << ":    ";//if the opcode is not a label print num: code
             iter->print_quad();
         }
         else {
-            cout << endl << left << setw(4) << count << ": ";
+            cout << endl << left << setw(4) << count << ": ";//if opcode is a label print \n num: label:
             iter->print_quad();
         }
         cout << endl;
@@ -275,7 +290,7 @@ list<int> makelist(int i) {
     return list_i;
 }
 
-// Implementation of the merge function
+// Implementation of the merge_list function
 list<int> merge_list(list<int> &list1, list<int> &list2) {
     list1.merge(list2);
     return list1;
@@ -315,7 +330,7 @@ bool typecheck(ST_entry_type* t1, ST_entry_type* t2) {
     return typecheck(t1->derived_arr, t2->derived_arr);
 }
 
-// Implementation of the convertType function
+// Implementation of the convert_type function
 ST_entry* convert_type(ST_entry* s, string t) {
     ST_entry* temp = symbol_table::generate_tem_var(new ST_entry_type(t));
 
@@ -366,7 +381,7 @@ string convert_float_str(float f) {
     return std::to_string(f);
 }
 
-// Implementation of the convertIntToBool function
+// Implementation of the convert_int_bool function
 expression* convert_int_bool(expression* expr) {
     if(expr->type != "bool") {
         expr->falselist = makelist(next_instr_count());    // Add falselist for boolean expressions
@@ -377,7 +392,7 @@ expression* convert_int_bool(expression* expr) {
     return expr;
 }
 
-// Implementation of the convertBoolToInt function
+// Implementation of the convert_bool_int function
 expression* convert_bool_int(expression* expr) {
     if(expr->type == "bool") {
         expr->location = symbol_table::generate_tem_var(new ST_entry_type("int"));
@@ -431,16 +446,17 @@ string check_type(ST_entry_type* t_var) {
 }
 
 int main() {
-    num_ST = 0;                            // Initialize STCount to 0
+    num_ST = 0;                            // Initialize num_ST to 0
     global_symb_table = new symbol_table("Global");   // Create global symbol table
+    cout<<"\n\n\n\n";
     curr_symb_table =global_symb_table;                   // Make global symbol table the currently active symbol table
     block = "";
 
     yyparse();
-    global_symb_table->update_ST();
+    global_symb_table->update_entry();
     quad_TAC_list.print_quad_list();       // Print Three Address Code
     cout << endl;
-    //global_symb_table->print();      // Print symbol tables
+    global_symb_table->print_ST();      // Print symbol tables
 
     return 0;
 }

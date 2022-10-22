@@ -62,7 +62,7 @@ punctuators                     "["|"]"|"("|")"|"{"|"}"|"."|"-"|">"|"++"|"--"|"&
 "enum"                          { return ENUM; }
 "extern"                        { return EXTERN; }
 "float"                         { return FLOAT; }
-"for"                           { return FOR; }
+"for"                           { return FBITWISE_OR; }
 "goto"                          { return GOTO; }
 "if"                            { return IF; }
 "inline"                        { return INLINE; }
@@ -71,7 +71,7 @@ punctuators                     "["|"]"|"("|")"|"{"|"}"|"."|"-"|">"|"++"|"--"|"&
 "register"                      { return REGISTER; }
 "restrict"                      { return RESTRICT; }
 "return"                        { return RETURN; }
-"short"                         { return SHORT; }
+"short"                         { return SHBITWISE_ORT; }
 "signed"                        { return SIGNED; }
 "sizeof"                        { return SIZEOF; }
 "static"                        { return STATIC; }
@@ -142,10 +142,10 @@ punctuators                     "["|"]"|"("|")"|"{"|"}"|"."|"-"|">"|"++"|"--"|"&
 ")"                             { return RIGHT_PARENTHESES; }
 "&"                             { return BITWISE_AND; }
 "=="                            { return EQUAL; }
-"^"                             { return BITWISE_XOR; }
+"^"                             { return BITWISE_OR; }
 "|"                             { return BITWISE_OR; }
 "&&"                            { return LOGICAL_AND; }
-"||"                            { return LOGICAL_OR; }
+"||"                            { return LOGICAL_BITWISE_OR; }
 ">>="                           { return RIGHT_SHIFT_ASSIGN ; }
 "!="                            { return NOT_EQUAL; }
 "&="                            { return BITWISE_AND_ASSIGN ; }

@@ -28,12 +28,12 @@ class array_data_type;  // Represents an array data type
 /*
     Global variables used
     ---------------------
-    currentSymbol       Pointer to the current symbol
-    currentST           Pointer to the currently active symbol table
-    globalST            Pointer to the global symbol table
+    curr_symbol       Pointer to the current symbol
+    curr_symb_table           Pointer to the currently active symbol table
+    global_symb_table            Pointer to the global symbol table
     quadList            The list of quads for lazy spiting
-    STCount             A count variable used for naming nested symbol tables
-    blockName           A variable used for naming nested blocks in symbol tables
+    num_ST             A count variable used for naming nested symbol tables
+    block           A variable used for naming nested blocks in symbol tables
 */
 
 extern ST_entry* curr_symbol;
@@ -42,6 +42,7 @@ extern symbol_table* global_symb_table;
 extern quad_TAC_arr quad_TAC_list;
 extern int num_ST;
 extern string block;
+extern string prev_var;
 
 
     // Class to represent the type of a ST_entry in the symbol table
@@ -105,7 +106,7 @@ public:
     static ST_entry* generate_tem_var(ST_entry_type* t, string initValue = "");// to generate a temporray variable and insert it.
 
     void print_ST();    // prints the symbol table 
-    void update_ST();   //updates the symbol table
+    void update_entry();   //updates the symbol table
 };
 
 

@@ -6,10 +6,10 @@ ass5_20CS10085_20CS30065_translator.o: ass5_20CS10085_20CS30065_translator.cxx a
 	g++ -c -std=c++14 ass5_20CS10085_20CS30065_translator.cxx
 
 lex.yy.o: lex.yy.c
-	g++ -c lex.yy.c
+	g++ -std=c++14 -c lex.yy.c
 
 y.tab.o: y.tab.c
-	g++ -c y.tab.c
+	g++ -std=c++14 -c y.tab.c
 
 lex.yy.c: ass5_20CS10085_20CS30065.l y.tab.h ass5_20CS10085_20CS30065_translator.h
 	flex ass5_20CS10085_20CS30065.l
