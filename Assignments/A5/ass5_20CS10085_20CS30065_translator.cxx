@@ -109,7 +109,7 @@ void symbol_table::print_ST() {
     cout << "\n";
 
     // Symbol Table Column names
-    cout << setfill(' ') << left << setw(25) <<  "Name"; //name of variable
+    cout << setfill(' ') << left << setw(25) <<  "\nName"; //name of variable
     cout << left << setw(25) << "Type";                  //type of variable
     cout << left << setw(20) << "Initial Value";         //intial value of variable if any
     cout << left << setw(15) << "Size";                  //size of the variable

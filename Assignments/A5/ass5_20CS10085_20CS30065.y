@@ -37,7 +37,7 @@ void yyerror(char *s);
 %token ENUM
 %token EXTERN
 %token FLOAT
-%token FBITWISE_OR 
+%token FOR 
 %token GOTO
 %token IF
 %token INLINE
@@ -46,7 +46,7 @@ void yyerror(char *s);
 %token REGISTER
 %token RESTRICT
 %token RETURN
-%token SHBITWISE_ORT
+%token SHORT
 %token SIGNED
 %token SIZEOF
 %token STATIC
@@ -112,10 +112,12 @@ void yyerror(char *s);
 %token BITWISE_XOR_ASSIGN
 %token BITWISE_OR_ASSIGN 
 
+
+
 %token INVALID
 
-%nonassoc RIGHT_PARENTHESES
-%nonassoc ELSE
+%right RIGHT_PARENTHESES
+%right THEN ELSE
 
 %start translation_unit
 
@@ -628,7 +630,7 @@ exclusive_or_expression:
         {
             $$ = $1;    // Simple assignment
         }
-        | exclusive_or_expression BITWISE_OR and_expression
+        | exclusive_or_expression BITWISE_XOR and_expression
         {
             if(typecheck($1->location, $3->location)) {                               // Check for type compatibility
                 convert_bool_int($1);                                       // Convert bool to int
@@ -789,7 +791,7 @@ assignment_operator:
         { /* Ignored */ }
         | BITWISE_OR_ASSIGN
         { /* Ignored */ }
-        | BITWISE_OR_ASSIGN
+        | BITWISE_XOR_ASSIGN
         { /* Ignored */ }
         ;
 
@@ -875,7 +877,7 @@ type_specifier:
         {
             prev_var = "char";   // Store the latest encountered type in prev_var
         }
-        | SHBITWISE_ORT
+        | SHORT
         { /* Ignored */ }
         | INT
         {
@@ -1372,7 +1374,7 @@ iteration_statement:
             $$->nextlist = $10->falselist;          // Exit loop if expression is false  
             block = "";
         }
-        | FBITWISE_OR F LEFT_PARENTHESES X change_table declaration M expression_statement M expression N RIGHT_PARENTHESES M loop_statement
+        | FOR F LEFT_PARENTHESES X change_table declaration M expression_statement M expression N RIGHT_PARENTHESES M loop_statement
         {
             /*
                 This production rule has been augmented with non-terminals like F, X, change_table and M to handle the control flow, 
@@ -1388,7 +1390,7 @@ iteration_statement:
             block = "";
             move_to_table(curr_symb_table->parent);
         }
-        | FBITWISE_OR F LEFT_PARENTHESES X change_table expression_statement M expression_statement M expression N RIGHT_PARENTHESES M loop_statement
+        | FOR F LEFT_PARENTHESES X change_table expression_statement M expression_statement M expression N RIGHT_PARENTHESES M loop_statement
         {
             /*
                 This production rule has been augmented with non-terminals like F, X, change_table and M to handle the control flow, 
@@ -1404,7 +1406,7 @@ iteration_statement:
             block = "";
             move_to_table(curr_symb_table->parent);
         }
-        | FBITWISE_OR F LEFT_PARENTHESES X change_table declaration M expression_statement M expression N RIGHT_PARENTHESES M LEFT_CURLY blocationk_item_listopt RIGHT_CURLY
+        | FOR F LEFT_PARENTHESES X change_table declaration M expression_statement M expression N RIGHT_PARENTHESES M LEFT_CURLY blocationk_item_listopt RIGHT_CURLY
         {
             /*
                 This production rule has been augmented with non-terminals like F, X, change_table and M to handle the control flow, 
@@ -1420,7 +1422,7 @@ iteration_statement:
             block = "";
             move_to_table(curr_symb_table->parent);
         }
-        | FBITWISE_OR F LEFT_PARENTHESES X change_table expression_statement M expression_statement M expression N RIGHT_PARENTHESES M LEFT_CURLY blocationk_item_listopt RIGHT_CURLY
+        | FOR F LEFT_PARENTHESES X change_table expression_statement M expression_statement M expression N RIGHT_PARENTHESES M LEFT_CURLY blocationk_item_listopt RIGHT_CURLY
         {
             /*
                 This production rule has been augmented with non-terminals like F, X, change_table and M to handle the control flow, 
@@ -1443,7 +1445,7 @@ F: %empty
             /*
             This non-terminal indicates the start of a for loop
             */
-            block = "FBITWISE_OR";
+            block = "FOR";
         }
         ;
 
