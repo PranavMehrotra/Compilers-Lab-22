@@ -142,7 +142,7 @@ punctuators                     "["|"]"|"("|")"|"{"|"}"|"."|"-"|">"|"++"|"--"|"&
 ")"                             { return RIGHT_PARENTHESES; }
 "&"                             { return BITWISE_AND; }
 "=="                            { return EQUAL; }
-"^"                             { return BITWISE_OR; }
+"^"                             { return BITWISE_XOR; }
 "|"                             { return BITWISE_OR; }
 "&&"                            { return LOGICAL_AND; }
 "||"                            { return LOGICAL_BITWISE_OR; }
