@@ -5,25 +5,34 @@
 #include<iostream>
 extern int yylex();
 extern int lineno;
-void yyerror(char *s);
+void yyerror(string s);
 %}
 
 
 %union{
+    //for constants
     int intval;
     char *floatval;
     char *charval;
     char *stringval;
+    
+    //to keep a track of current instruction
     int inst_num;
+
     char unary_op;
     int num_params;
+    
     expression* expr;
     statement* stmt;
+    
+    //for identifier
     ST_entry* idval;
+    
     ST_entry_type* symbol_type;
     array_data_type* arr;
 }
 
+    //terminal are declared of type token
 %token AUTO
 %token BREAK
 %token CASE 
@@ -59,6 +68,7 @@ void yyerror(char *s);
 %token _COMPLEX
 %token _IMAGINARY
 
+    //token declaration for constants and identifier that will act as placeholders
 %token<idval> IDENTIFIER
 %token<intval> INTEGER_CONSTANT
 %token<floatval> FLOATING_CONSTANT
@@ -112,21 +122,22 @@ void yyerror(char *s);
 %token BITWISE_XOR_ASSIGN
 %token BITWISE_OR_ASSIGN 
 
-
-
 %token INVALID
 
+    //to prevent issues of ambiguity and dangling else
 %right RIGHT_PARENTHESES
 %right THEN ELSE
 
+    //declare the start non terminal
 %start translation_unit
 
+    //to store unary operator as character
 %type <unary_op> unary_operator
 
-
+    //useful for storing number of parameters
 %type <num_params> argument_expression_list argument_expression_listopt
 
-// Non-terminals of type expr (denoting expressions)
+// Non-terminals of type expression
 %type <expr> 
         expression
         primary_expression 
@@ -144,30 +155,30 @@ void yyerror(char *s);
         assignment_expression
         expression_statement
 
-// Non-terminals of type stmt (denoting statements)
+// Non-terminals of type statement
 %type <stmt>
-        statement
         compound_statement
-        loop_statement
+        statement
         selection_statement
         iteration_statement
         labeled_statement 
         jump_statement
-        blocationk_item
-        blocationk_item_list
-        blocationk_item_listopt
+        block_item
+        block_item_list
+        block_item_listopt
+        loop_statement
 
-// The pointer non-terminal is treated with type ST_entry_type
+// pointer of type ST_entry_type 
 %type <symbol_type> pointer
 
-// Non-terminals of type idval (ST_entry*)
+//type ST_entry* i.e. pointers to symbol table entry 
 %type <idval> constant initializer
 %type <idval> direct_declarator init_declarator declarator
 
-// Non-terminals of type arr
+// array data type
 %type <arr> postfix_expression unary_expression cast_expression
 
-// Auxiliary non-terminal M of type instr to help in backpatching
+//M marker to keep a track of next instruction during backpatching
 %type <inst_num> M
 
 // Auxiliary non-terminal N of type stmt to help in control flow statements
@@ -177,41 +188,49 @@ void yyerror(char *s);
 primary_expression: 
         IDENTIFIER
         {
-            $$ = new expression();  // Create new expression
-            $$->location = $1;           // Store pointer to entry in the symbol table
+            $$ = new expression();       // Create new expression
+            $$->location = $1;           // Store pointer to symbol table entry
             $$->type = "non_bool";
         }
         | constant
         {
-            $$ = new expression();  // Create new expression
-            $$->location = $1;           // Store pointer to entry in the symbol table
+            $$ = new expression();       // Create new expression
+            $$->location = $1;           // Store pointer to symbol table entry
         }
         | STRING_LITERAL
         {
-            $$ = new expression();  // Create new expression
-            $$->location = symbol_table::generate_tem_var(new ST_entry_type("ptr"), $1);  // Create a new temporary, and store the value in that temporary
+            $$ = new expression();      // Create new expression
+            // store the value of the string in a temporary variable
+            $$->location = symbol_table::generate_tem_var(new ST_entry_type("ptr"), $1);  
             $$->location->type->derived_arr = new ST_entry_type("char");
         }
         | LEFT_PARENTHESES expression RIGHT_PARENTHESES
         {
-            $$ = $2;    // Simple assignment
+            //copy the content of expression to primary_expression
+            $$ = $2;    
         }
         ;
 
-constant: 
+constant: //to handle constants of different
         INTEGER_CONSTANT
         {
-            $$ = symbol_table::generate_tem_var(new ST_entry_type("int"), convert_int_str($1));   // Create a new temporary, and store the value in that temporary
+            // store the integer constant in a new temporary variable
+            $$ = symbol_table::generate_tem_var(new ST_entry_type("int"), convert_int_str($1));   
+            //idval = intnum
             add_TAC("=", $$->name, $1);
         }
         | FLOATING_CONSTANT
         {
-            $$ = symbol_table::generate_tem_var(new ST_entry_type("float"), string($1));     // Create a new temporary, and store the value in that temporary
+            //store the floating constant in a new temporary variable
+            $$ = symbol_table::generate_tem_var(new ST_entry_type("float"), string($1));
+            //idval = floatnum     
             add_TAC("=", $$->name, string($1));
         }
         | CHARACTER_CONSTANT
         {
-            $$ = symbol_table::generate_tem_var(new ST_entry_type("float"), string($1));     // Create a new temporary, and store the value in that temporary
+            //store the character constant in a new temporary variable
+            $$ = symbol_table::generate_tem_var(new ST_entry_type("float"), string($1));     
+            //idval = char
             add_TAC("=", $$->name, string($1));
         }
         ;
@@ -219,137 +238,164 @@ constant:
 postfix_expression: 
         primary_expression
         {
-            $$ = new array_data_type();           // Create a new array_data_type
-            $$->array_data_type = $1->location;        // Store the locationation of the primary expression
-            $$->type = $1->location->type;   // Update the type
-            $$->location = $$->array_data_type;
+            //primary expression contains the relevant details of the array
+            //store these details in postfix_expression 
+            $$ = new array_data_type();                 // Create a new array
+            $$->array = $1->location;         // Store the location of the primary expression
+            $$->type = $1->location->type;              // Update the type of array
+            $$->location = $$->array;         //update the location
         }
         | postfix_expression LEFT_SQUARE expression RIGHT_SQUARE
         {
-            $$ = new array_data_type();               // Create a new array_data_type
-            $$->type = $1->type->derived_arr;   // Set the type equal to the element type
-            $$->array_data_type = $1->array_data_type;          // Copy the base
-            $$->location = symbol_table::generate_tem_var(new ST_entry_type("int"));  // Store address of new temporary
-            $$->arr_type = "arr";              // Set arr_type to "arr"
+            //to compute addresses of multi-dimensional array
+            $$ = new array_data_type();                  // Create a new array
+            $$->type = $1->type->derived_arr;            // Set the type equal to the element type
+            $$->array = $1->array;   // Copy the base
+            
+            // Store the new temporary variable
+            $$->location = symbol_table::generate_tem_var(new ST_entry_type("int"));  
+            $$->arr_type = "arr";                        // Set arr_type to "arr"
 
-            if($1->arr_type == "arr") {        // If we have an "arr" type then, multiply the size of the sub-type of array_data_type with the expression value and add
+            if($1->arr_type == "arr") {      
+                //if postfix_expression is of type arr, [expression] would increase teh dimension of array  
+                // multiply the size of the type of subarray with the expression value
+
                 ST_entry* sym = symbol_table::generate_tem_var(new ST_entry_type("int"));
-                int sz = type_sizeof($$->type);
-                add_TAC("*", sym->name, $3->location->name, convert_int_str(sz));
+                int size = type_sizeof($$->type);
+                
+                //a[i][j] = base + i*w1 + j*w2
+                add_TAC("*", sym->name, $3->location->name, convert_int_str(size));
                 add_TAC("+", $$->location->name, $1->location->name, sym->name);
             }
-            else {                          // Compute the size
-                int sz = type_sizeof($$->type);
-                add_TAC("*", $$->location->name, $3->location->name, convert_int_str(sz));
+            else {                                       // if of the form id[E]
+                int size = type_sizeof($$->type);
+                add_TAC("*", $$->location->name, $3->location->name, convert_int_str(size));
             }
         }
         | postfix_expression LEFT_PARENTHESES argument_expression_listopt RIGHT_PARENTHESES
         {   
-            // Corresponds to calling a function with the function name and the appropriate number of parameters
+            //function call with the function name and parameter list
             $$ = new array_data_type();
-            $$->array_data_type = symbol_table::generate_tem_var($1->type);
-            add_TAC("call", $$->array_data_type->name, $1->array_data_type->name, convert_int_str($3));
+            $$->array = symbol_table::generate_tem_var($1->type);
+            //call func name, parameter count
+            add_TAC("call", $$->array->name, $1->array->name, convert_int_str($3));
         }
         | postfix_expression DOT IDENTIFIER
-        { /* Ignored */ }
+        {}
         | postfix_expression ARROW IDENTIFIER
-        { /* Ignored */ }
+        {}
         | postfix_expression SELF_INCREASE
         {   
             $$ = new array_data_type();
-            $$->array_data_type = symbol_table::generate_tem_var($1->array_data_type->type);      // Generate a new temporary
-            add_TAC("=", $$->array_data_type->name, $1->array_data_type->name);            // First assign the old value
-            add_TAC("+", $1->array_data_type->name, $1->array_data_type->name, "1");       // Then add 1
+            //create a new temp variable
+            $$->array = symbol_table::generate_tem_var($1->array->type);      
+            
+            //for a++: t = a, a = t + 1
+            add_TAC("=", $$->array->name, $1->array->name);            // First assign the old value
+            add_TAC("+", $1->array->name, $1->array->name, "1");       // Then add 1
         }
         | postfix_expression SELF_DECREASE
         {
-            $$ = new array_data_type();
-            $$->array_data_type = symbol_table::generate_tem_var($1->array_data_type->type);      // Generate a new temporary
-            add_TAC("=", $$->array_data_type->name, $1->array_data_type->name);            // First assign the old value
-            add_TAC("-", $1->array_data_type->name, $1->array_data_type->name, "1");       // Then subtract 1
+            $$ = new array_data_type();         
+            //create a new temp variable
+            $$->array = symbol_table::generate_tem_var($1->array->type);      
+            
+            //for a--: t = a, a = t-1
+            add_TAC("=", $$->array->name, $1->array->name);            // First assign the old value
+            add_TAC("-", $1->array->name, $1->array->name, "1");       // Then subtract 1
         }
         | LEFT_PARENTHESES type_name RIGHT_PARENTHESES LEFT_CURLY initializer_list RIGHT_CURLY
-        { /* Ignored */ }
+        {}
         | LEFT_PARENTHESES type_name RIGHT_PARENTHESES LEFT_CURLY initializer_list COMMA RIGHT_CURLY
-        { /* Ignored */ }
+        {}
         ;
 
 argument_expression_listopt: 
         argument_expression_list
         {
-            $$ = $1;    // Assign $1 to $$
+            $$ = $1;    // assignment
         }
-        | %empty
+        |%empty
         {
-            $$ = 0;     // No arguments, just equate to zero
+            $$ = 0;     // No arguments i.e. 0/void
         }
         ;
 
 argument_expression_list: 
         assignment_expression
         {
-            $$ = 1;                         // consider one argument
-            add_TAC("param", $1->location->name);   // add_TAC parameter
+            $$ = 1;                                  // one argument
+            add_TAC("param", $1->location->name);    // TAC: param parameter_1
         }
         | argument_expression_list COMMA assignment_expression
         {
-            $$ = $1 + 1;                    // consider one more argument, so add 1
-            add_TAC("param", $3->location->name);   // add_TAC parameter
+            $$ = $1 + 1;                            // for the next parameter
+            add_TAC("param", $3->location->name);   // TAC: param parameter_i
         }
         ;
 
 unary_expression: 
         postfix_expression
         {
-            $$ = $1;    // Assign $1 to $$
+            $$ = $1;      // copy the content
         }
         | SELF_INCREASE unary_expression
         {
-            add_TAC("+", $2->array_data_type->name, $2->array_data_type->name, "1");   // Add 1
+            //for ++a, a = a + 1
+            //pre increment so no need for temporary variable
+            add_TAC("+", $2->array->name, $2->array->name, "1");   // Add 1
             $$ = $2;    // Assign
         }
         | SELF_DECREASE unary_expression
         {
-            add_TAC("-", $2->array_data_type->name, $2->array_data_type->name, "1");   // Subtract 1
+            //for --a, a = a - 1
+            //pre derement so no need for temporary variable
+            add_TAC("-", $2->array->name, $2->array->name, "1");   // Subtract 1
             $$ = $2;    // Assign
         }
         | unary_operator cast_expression
         {
-            // Case of unary operator
+            
             $$ = new array_data_type();
+            
             switch($1) {
-                case '&':   // Address
-                    $$->array_data_type = symbol_table::generate_tem_var(new ST_entry_type("ptr"));    // Generate a pointer temporary
-                    $$->array_data_type->type->derived_arr = $2->array_data_type->type;                 // Assign corresponding type
-                    add_TAC("= &", $$->array_data_type->name, $2->array_data_type->name);              // Emit the quad
+                case '&':   // Used for addressing (&p)
+                    $$->array = symbol_table::generate_tem_var(new ST_entry_type("ptr"));    // Generate a pointer temporary
+                    $$->array->type->derived_arr = $2->array->type;                 // Assign corresponding type
+                    add_TAC("= &", $$->array->name, $2->array->name);              // generate the TAC quad
                     break;
-                case '*':   // De-referencing
+                
+                case '*':   // De-referencing eg *p
                     $$->arr_type = "ptr";
-                    $$->location = symbol_table::generate_tem_var($2->array_data_type->type->derived_arr);   // Generate a temporary of the appropriate type
-                    $$->array_data_type = $2->array_data_type;                                      // Assign
-                    add_TAC("= *", $$->location->name, $2->array_data_type->name);                // Emit the quad
+                    $$->location = symbol_table::generate_tem_var($2->array->type->derived_arr);   // Generate a temporary of the appropriate type
+                    $$->array = $2->array;                                      // Assign
+                    add_TAC("= *", $$->location->name, $2->array->name);                // generate the TAC quad
                     break;
-                case '+':   // Unary plus
-                    $$ = $2;    // Simple assignment
+                
+                case '+':   // Unary plus eg +2
+                    $$ = $2;   //transfer the content
                     break;
-                case '-':   // Unary minus
-                    $$->array_data_type = symbol_table::generate_tem_var(new ST_entry_type($2->array_data_type->type->type));    // Generate temporary of the same base type
-                    add_TAC("= -", $$->array_data_type->name, $2->array_data_type->name);                              // Emit the quad
+                
+                case '-':   // Unary minus eg -2 apply the operator on cast_expression
+                    $$->array = symbol_table::generate_tem_var(new ST_entry_type($2->array->type->type));    // Generate temporary of the same base type
+                    add_TAC("= -", $$->array->name, $2->array->name);                              // generate the TAC quad
                     break;
-                case '~':   // Bitwise not
-                    $$->array_data_type = symbol_table::generate_tem_var(new ST_entry_type($2->array_data_type->type->type));    // Generate temporary of the same base type
-                    add_TAC("= ~", $$->array_data_type->name, $2->array_data_type->name);                              // Emit the quad
+                
+                case '~':   // Bitwise not apply the operator on cast_expression
+                    $$->array = symbol_table::generate_tem_var(new ST_entry_type($2->array->type->type));    // Generate temporary of the same base type
+                    add_TAC("= ~", $$->array->name, $2->array->name);                              // generate the TAC quad
                     break;
-                case '!':   // Logical not 
-                    $$->array_data_type = symbol_table::generate_tem_var(new ST_entry_type($2->array_data_type->type->type));    // Generate temporary of the same base type
-                    add_TAC("= !", $$->array_data_type->name, $2->array_data_type->name);                              // Emit the quad
+                
+                case '!':   // Logical not apply the operator on cast_expression
+                    $$->array = symbol_table::generate_tem_var(new ST_entry_type($2->array->type->type));    // Generate temporary of the same base type
+                    add_TAC("= !", $$->array->name, $2->array->name);                              // generate the TAC quad
                     break;
             }
         }
         | SIZEOF unary_expression
-        { /* Ignored */ }
+        {}
         | SIZEOF LEFT_PARENTHESES type_name RIGHT_PARENTHESES
-        { /* Ignored */ }
+        {}
         ;
 
 unary_operator:
@@ -376,66 +422,92 @@ unary_operator:
         ;
 
 cast_expression: 
+    //typecasting
         unary_expression
         {
-            $$ = $1;    // Simple assignment
+            $$ = $1;    // copy the content
         }
         | LEFT_PARENTHESES type_name RIGHT_PARENTHESES cast_expression
         {
+            //(float)expression
             $$ = new array_data_type();
-            $$->array_data_type = convert_type($4->array_data_type, prev_var);    // Generate a new symbol of the appropriate type
+            // convert the type depending upon type_name
+            $$->array = convert_type($4->array, prev_var);    
         }
         ;
+
+/*
+To involve an arry in an expression, we need to find the correct address depending upon the indexing
+and width of the array. temporary variables storing the appropriate address would be used for indexing
+
+else for normal variables directly assign the values
+*/
 
 multiplicative_expression: 
         cast_expression
         {
-            $$ = new expression();          // Generate new expression
-            if($1->arr_type == "arr") {        // arr_type "arr"
-                $$->location = symbol_table::generate_tem_var($1->location->type);  // Generate new temporary
-                add_TAC("=[]", $$->location->name, $1->array_data_type->name, $1->location->name);     // Emit the quad
+            $$ = new expression();                  // Generate new expression
+            if($1->arr_type == "arr") {             // arr_type "arr"
+                // Generate new temporary variable to store the value of array at the index
+                $$->location = symbol_table::generate_tem_var($1->location->type); 
+                
+                //temp = array [ addr ]
+                add_TAC("=[]", $$->location->name, $1->array->name, $1->location->name);     // generate the TAC quad
             }
-            else if($1->arr_type == "ptr") {   // arr_type "ptr"
-                $$->location = $1->location;          // Assign the symbol table entry
+            else if($1->arr_type == "ptr") {          // variable type "ptr"
+                
+                $$->location = $1->location;          // Assign the pointer to symbol table directly
+                //the above instruction is just like copy statement  
             }
             else {
-                $$->location = $1->array_data_type;
+                
+                $$->location = $1->array;   //assign the pointers directly for all other variables
             }
         }
         | multiplicative_expression MUL cast_expression
         {   
-            // Indicates multiplication
-            if(typecheck($1->location, $3->array_data_type)) {     // Check for type compatibility
-                $$ = new expression();                                                  // Generate new expression
+            // Arithmetic operation requires both the operands to be of compatible type 
+            if(typecheck($1->location, $3->array)) { 
+                // Generate new expression    
+                $$ = new expression();                                                  
+                
+                //create a new temporary variable to store the product
                 $$->location = symbol_table::generate_tem_var(new ST_entry_type($1->location->type->type));    // Generate new temporary
-                add_TAC("*", $$->location->name, $1->location->name, $3->array_data_type->name);               // Emit the quad
+                add_TAC("*", $$->location->name, $1->location->name, $3->array->name);                         // generate the TAC quad
             }
             else {
-                yyerror("Type Error");
+                //if the operands aren't compatible return error
+                yyerror("Type Mismatch");
             }
         }
         | multiplicative_expression F_SLASH cast_expression
         {
-            // Indicates division
-            if(typecheck($1->location, $3->array_data_type)) {     // Check for type compatibility
-                $$ = new expression();                                                  // Generate new expression
+            // Division operation require both operands to be type compatible
+            if(typecheck($1->location, $3->array)) {
+                // Generate new expression    
+                $$ = new expression();    
+
+                //create a temporary variable to store the quotient 
+
+                                                          
                 $$->location = symbol_table::generate_tem_var(new ST_entry_type($1->location->type->type));    // Generate new temporary
-                add_TAC("/", $$->location->name, $1->location->name, $3->array_data_type->name);               // Emit the quad
+                add_TAC("/", $$->location->name, $1->location->name, $3->array->name);                         // generate the TAC quad
             }
             else {
-                yyerror("Type Error");
+                yyerror("Type Mismatch");
             }
         }
         | multiplicative_expression MODULO cast_expression
         {
-            // Indicates modulo
-            if(typecheck($1->location, $3->array_data_type)) {     // Check for type compatibility
-                $$ = new expression();                                                  // Generate new expression
-                $$->location = symbol_table::generate_tem_var(new ST_entry_type($1->location->type->type));    // Generate new temporary
-                add_TAC("%", $$->location->name, $1->location->name, $3->array_data_type->name);               // Emit the quad
+            // modulo
+            
+            if(typecheck($1->location, $3->array)) {                                                            // Check for type compatibility
+                $$ = new expression();                                                                          // Generate new expression
+                $$->location = symbol_table::generate_tem_var(new ST_entry_type($1->location->type->type));     // Generate new temporary
+                add_TAC("%", $$->location->name, $1->location->name, $3->array->name);                          // generate the TAC quad
             }
             else {
-                yyerror("Type Error");
+                yyerror("Type Mismatch");
             }
         }
         ;
@@ -443,30 +515,32 @@ multiplicative_expression:
 additive_expression: 
         multiplicative_expression
         {
-            $$ = $1;    // Simple assignment
+            $$ = $1;                                                                                             //transfer the content
         }
         | additive_expression PLUS multiplicative_expression
         {   
-            // Indicates addition
-            if(typecheck($1->location, $3->location)) {       // Check for type compatibility
-                $$ = new expression();                                                  // Generate new expression
-                $$->location = symbol_table::generate_tem_var(new ST_entry_type($1->location->type->type));    // Generate new temporary
-                add_TAC("+", $$->location->name, $1->location->name, $3->location->name);                 // Emit the quad
+            // addition
+            // Check for type compatibility
+            if(typecheck($1->location, $3->location)) {       
+                $$ = new expression();                                                                          // Generate new expression
+                $$->location = symbol_table::generate_tem_var(new ST_entry_type($1->location->type->type));     // Generate new temporary
+                
+                add_TAC("+", $$->location->name, $1->location->name, $3->location->name);                       // generate the TAC quad
             }
             else {
-                yyerror("Type Error");
+                yyerror("Type Mismatch");
             }
         }
         | additive_expression MINUS multiplicative_expression
         {
-            // Indicates subtraction
-            if(typecheck($1->location, $3->location)) {       // Check for type compatibility
-                $$ = new expression();                                                  // Generate new expression
-                $$->location = symbol_table::generate_tem_var(new ST_entry_type($1->location->type->type));    // Generate new temporary
-                add_TAC("-", $$->location->name, $1->location->name, $3->location->name);                 // Emit the quad
+            // subtraction
+            if(typecheck($1->location, $3->location)) {                                                         // Check for type compatibility
+                $$ = new expression();                                                                          // Generate new expression
+                $$->location = symbol_table::generate_tem_var(new ST_entry_type($1->location->type->type));     // Generate new temporary
+                add_TAC("-", $$->location->name, $1->location->name, $3->location->name);                       // generate the TAC quad
             }
             else {
-                yyerror("Type Error");
+                yyerror("Type Mismatch");
             }
         }
         ;
@@ -474,93 +548,99 @@ additive_expression:
 shift_expression: 
         additive_expression
         {
-            $$ = $1;    // Simple assignment
+            $$ = $1;                                                                                            //transfer the content
         }
         | shift_expression LEFT_SHIFT additive_expression
         {
-            // Indicates left shift
-            if($3->location->type->type == "int") {      // Check for type compatibility (int)
-                $$ = new expression();                                      // Generate new expression
-                $$->location = symbol_table::generate_tem_var(new ST_entry_type("int"));      // Generate new temporary
-                add_TAC("<<", $$->location->name, $1->location->name, $3->location->name);    // Emit the quad
+            // left shift
+            if($3->location->type->type == "int") {                                                             // Check for type compatibility (int)
+                $$ = new expression();                                                                          // Generate new expression
+                $$->location = symbol_table::generate_tem_var(new ST_entry_type("int"));                        // Generate new temporary
+                add_TAC("<<", $$->location->name, $1->location->name, $3->location->name);                      // generate the TAC quad
             }
             else {
-                yyerror("Type Error");
+                yyerror("Type Mismatch");
             }
         }
         | shift_expression RIGHT_SHIFT additive_expression
         {
-            // Indicates right shift
-            if($3->location->type->type == "int") {      // Check for type compatibility (int)
-                $$ = new expression();                                      // Generate new expression
-                $$->location = symbol_table::generate_tem_var(new ST_entry_type("int"));      // Generate new temporary
-                add_TAC(">>", $$->location->name, $1->location->name, $3->location->name);    // Emit the quad
+            // right shift
+            if($3->location->type->type == "int") {                                                             // Check for type compatibility (int)
+                $$ = new expression();                                                                          // Generate new expression
+                $$->location = symbol_table::generate_tem_var(new ST_entry_type("int"));                        // Generate new temporary
+                add_TAC(">>", $$->location->name, $1->location->name, $3->location->name);                      // generate the TAC quad
             }
             else {
-                yyerror("Type Error");
+                yyerror("Type Mismatch");
             }
         }
         ;
 
+/*
+
+next set of instructions involve boolean expressions. 
+boolean expressions have attributes truelist and falselist which will be backpatched later
+*/
+
 relational_expression: 
         shift_expression
         {
-            $$ = $1;    // Simple assignment
+            $$ = $1;                                                                                            //transfer the content
         }
         | relational_expression LESS_THAN shift_expression
         {
-            if(typecheck($1->location, $3->location)) {                   // Check for type compatibility
-                $$ = new expression();                          // Generate new expression of type bool
-                $$->type = "bool";
-                $$->truelist = makelist(next_instr_count());           // Create truelist for boolean expression
-                $$->falselist = makelist(next_instr_count() + 1);      // Create falselist for boolean expression
-                add_TAC("<", "", $1->location->name, $3->location->name);    // Emit "if x < y goto ..."
-                add_TAC("goto", "");                               // Emit "goto ..."
+            if(typecheck($1->location, $3->location)) {                                                         // Check for type compatibility
+                $$ = new expression();                                                                          // Generate new boolean expression
+                $$->type = "bool";                                                                              //synthesized attributes truelist and falselist
+                $$->truelist = makelist(next_instr_count());                                                    // Create truelist for boolean expression
+                $$->falselist = makelist(next_instr_count() + 1);                                               // Create falselist for boolean expression
+                add_TAC("<", "", $1->location->name, $3->location->name);                                       // generate TAC code "if x < y goto ..."
+                add_TAC("goto", "");                                                                            // generate TAC code "goto ..."
             }
             else {
-                yyerror("Type Error");
+                yyerror("Type Mismatch");
             }
         }
         | relational_expression GREATER_THAN shift_expression
         {
-            if(typecheck($1->location, $3->location)) {                   // Check for type compatibility
-                $$ = new expression();                          // Generate new expression of type bool
+            if(typecheck($1->location, $3->location)) {                                                         // Check for type compatibility
+                $$ = new expression();                                                                          // Generate new boolean expression
                 $$->type = "bool";
-                $$->truelist = makelist(next_instr_count());           // Create truelist for boolean expression
-                $$->falselist = makelist(next_instr_count() + 1);      // Create falselist for boolean expression
-                add_TAC(">", "", $1->location->name, $3->location->name);    // Emit "if x > y goto ..."
-                add_TAC("goto", "");                               // Emit "goto ..."
+                $$->truelist = makelist(next_instr_count());                                                    // Create truelist for boolean expression
+                $$->falselist = makelist(next_instr_count() + 1);                                               // Create falselist for boolean expression
+                add_TAC(">", "", $1->location->name, $3->location->name);                                       // generate TAC "if x > y goto ..."
+                add_TAC("goto", "");                                                                            // generate TAC "goto ..."
             }
             else {
-                yyerror("Type Error");
+                yyerror("Type Mismatch");
             }
         }
         | relational_expression LESS_THAN_EQUAL shift_expression
         {
-            if(typecheck($1->location, $3->location)) {                   // Check for type compatibility
-                $$ = new expression();                          // Generate new expression of type bool
+            if(typecheck($1->location, $3->location)) {                                                          // Check for type compatibility
+                $$ = new expression();                                                                           // Generate new boolean expression
                 $$->type = "bool";
-                $$->truelist = makelist(next_instr_count());           // Create truelist for boolean expression
-                $$->falselist = makelist(next_instr_count() + 1);      // Create falselist for boolean expression
-                add_TAC("<=", "", $1->location->name, $3->location->name);   // Emit "if x <= y goto ..."
-                add_TAC("goto", "");                               // Emit "goto ..."
+                $$->truelist = makelist(next_instr_count());                                                     // Create truelist for boolean expression
+                $$->falselist = makelist(next_instr_count() + 1);                                                // Create falselist for boolean expression
+                add_TAC("<=", "", $1->location->name, $3->location->name);                                       // generate TAC "if x <= y goto ..."
+                add_TAC("goto", "");                                                                             // generate TAC "goto ..."
             }
             else {
-                yyerror("Type Error");
+                yyerror("Type Mismatch");
             }
         }
         | relational_expression GREATER_THAN_EQUAL shift_expression
         {
-            if(typecheck($1->location, $3->location)) {                   // Check for type compatibility
-                $$ = new expression();                          // Generate new expression of type bool
+            if(typecheck($1->location, $3->location)) {                                                         // Check for type compatibility
+                $$ = new expression();                                                                          // Generate new boolean expression
                 $$->type = "bool";
-                $$->truelist = makelist(next_instr_count());           // Create truelist for boolean expression
-                $$->falselist = makelist(next_instr_count() + 1);      // Create falselist for boolean expression
-                add_TAC(">=", "", $1->location->name, $3->location->name);   // Emit "if x >= y goto ..."
-                add_TAC("goto", "");                               // Emit "goto ..."
+                $$->truelist = makelist(next_instr_count());                                                    // Create truelist for boolean expression
+                $$->falselist = makelist(next_instr_count() + 1);                                               // Create falselist for boolean expression
+                add_TAC(">=", "", $1->location->name, $3->location->name);                                      // generate TAC "if x >= y goto ..."
+                add_TAC("goto", "");                                                                            // generate TAC "goto ..."
             }
             else {
-                yyerror("Type Error");
+                yyerror("Type Mismatch");
             }
         }
         ;
@@ -568,59 +648,65 @@ relational_expression:
 equality_expression: 
         relational_expression
         {
-            $$ = $1;    // Simple assignment
+            $$ = $1;                                                                                            //transfer the content
         }
         | equality_expression EQUAL relational_expression
         {
-            if(typecheck($1->location, $3->location)) {                   // Check for type compatibility
-                convert_bool_int($1);                           // Convert bool to int
+            if(typecheck($1->location, $3->location)) {                                                         // Check for type compatibility
+                convert_bool_int($1);                                                                           // Convert bool to int
                 convert_bool_int($3);
-                $$ = new expression();                          // Generate new expression of type bool
+                $$ = new expression();                                                                          // Generate new boolean expression
                 $$->type = "bool";
-                $$->truelist = makelist(next_instr_count());           // Create truelist for boolean expression
-                $$->falselist = makelist(next_instr_count() + 1);      // Create falselist for boolean expression
-                add_TAC("==", "", $1->location->name, $3->location->name);   // Emit "if x == y goto ..."
-                add_TAC("goto", "");                               // Emit "goto ..."
+                $$->truelist = makelist(next_instr_count());                                                    // Create truelist for boolean expression
+                $$->falselist = makelist(next_instr_count() + 1);                                               // Create falselist for boolean expression
+                add_TAC("==", "", $1->location->name, $3->location->name);                                      // generate TAC "if x == y goto ..."
+                add_TAC("goto", "");                                                                            // generate TAC "goto ..."
             }
             else {
-                yyerror("Type Error");
+                yyerror("Type Mismatch");
             }
         }
         | equality_expression NOT_EQUAL relational_expression
         {
-            if(typecheck($1->location, $3->location)) {                   // Check for type compatibility
-                convert_bool_int($1);                           // Convert bool to int
+            if(typecheck($1->location, $3->location)) {                                                         // Check for type compatibility
+                convert_bool_int($1);                                                                           // Convert bool to int
                 convert_bool_int($3);
-                $$ = new expression();                          // Generate new expression of type bool
+                $$ = new expression();                                                                          // Generate new boolean expression
                 $$->type = "bool";
-                $$->truelist = makelist(next_instr_count());           // Create truelist for boolean expression
-                $$->falselist = makelist(next_instr_count() + 1);      // Create falselist for boolean expression
-                add_TAC("!=", "", $1->location->name, $3->location->name);   // Emit "if x != y goto ..."
-                add_TAC("goto", "");                               // Emit "goto ..."
+                $$->truelist = makelist(next_instr_count());                                                    // Create truelist for boolean expression
+                $$->falselist = makelist(next_instr_count() + 1);                                               // Create falselist for boolean expression
+                add_TAC("!=", "", $1->location->name, $3->location->name);                                      // generate TAC "if x != y goto ..."
+                add_TAC("goto", "");                                                                            // generate TAC "goto ..."
             }
             else {
-                yyerror("Type Error");
+                yyerror("Type Mismatch");
             }
         }
         ;
+/*
+the next set of transaltions involve converting expressions to int/non-boolean type,
+thus, truelist and falselist attributes now become invalid
+a new temporary variable is generated to store the result of the intermediate operations
+*/
+
 
 and_expression: 
         equality_expression
         {
-            $$ = $1;    // Simple assignment
+            $$ = $1;                                                                                             //transfer the content
         }
         | and_expression BITWISE_AND equality_expression
         {
-            if(typecheck($1->location, $3->location)) {                               // Check for type compatibility
-                convert_bool_int($1);                                       // Convert bool to int
+            if(typecheck($1->location, $3->location)) {                                                         // Check for type compatibility
+                convert_bool_int($1);                                                                           // Convert bool to int
                 convert_bool_int($3);
                 $$ = new expression();
-                $$->type = "not_bool";                                      // The new result is not bool
-                $$->location = symbol_table::generate_tem_var(new ST_entry_type("int"));      // Create a new temporary
-                add_TAC("&", $$->location->name, $1->location->name, $3->location->name);     // Emit the quad
+                $$->type = "not_bool";                                                                          // The new result is not bool
+                $$->location = symbol_table::generate_tem_var(new ST_entry_type("int"));                        // Create a new temporary
+                add_TAC("&", $$->location->name, $1->location->name, $3->location->name);                       // generate the TAC quad
             }
             else {
-                yyerror("Type Error");
+                yyerror("Type Mismatch");
             }
         }
         ;
@@ -628,20 +714,20 @@ and_expression:
 exclusive_or_expression: 
         and_expression
         {
-            $$ = $1;    // Simple assignment
+            $$ = $1;                                                                                            //transfer the content
         }
         | exclusive_or_expression BITWISE_XOR and_expression
         {
-            if(typecheck($1->location, $3->location)) {                               // Check for type compatibility
-                convert_bool_int($1);                                       // Convert bool to int
+            if(typecheck($1->location, $3->location)) {                                                         // Check for type compatibility
+                convert_bool_int($1);                                                                           // Convert bool to int
                 convert_bool_int($3);
                 $$ = new expression();
-                $$->type = "not_bool";                                      // The new result is not bool
-                $$->location = symbol_table::generate_tem_var(new ST_entry_type("int"));      // Create a new temporary
-                add_TAC("^", $$->location->name, $1->location->name, $3->location->name);     // Emit the quad
+                $$->type = "not_bool";                                                                          // The new result is not bool
+                $$->location = symbol_table::generate_tem_var(new ST_entry_type("int"));                        // Create a new temporary
+                add_TAC("^", $$->location->name, $1->location->name, $3->location->name);                       // generate the TAC quad
             }
             else {
-                yyerror("Type Error");
+                yyerror("Type Mismatch");
             }
         }
         ;
@@ -649,20 +735,20 @@ exclusive_or_expression:
 inclusive_or_expression: 
         exclusive_or_expression
         {
-            $$ = $1;    // Simple assignment
+            $$ = $1;                                                                                            //transfer the content
         }
         | inclusive_or_expression BITWISE_OR exclusive_or_expression
         {
-            if(typecheck($1->location, $3->location)) {                               // Check for type compatibility
-                convert_bool_int($1);                                       // Convert bool to int
+            if(typecheck($1->location, $3->location)) {                                                         // Check for type compatibility
+                convert_bool_int($1);                                                                           // Convert bool to int
                 convert_bool_int($3);
                 $$ = new expression();
-                $$->type = "not_bool";                                      // The new result is not bool
-                $$->location = symbol_table::generate_tem_var(new ST_entry_type("int"));      // Create a new temporary
-                add_TAC("|", $$->location->name, $1->location->name, $3->location->name);     // Emit the quad
+                $$->type = "not_bool";                                                                          // The new result is not bool
+                $$->location = symbol_table::generate_tem_var(new ST_entry_type("int"));                        // Create a new temporary
+                add_TAC("|", $$->location->name, $1->location->name, $3->location->name);                       // generate the TAC quad
             }
             else {
-                yyerror("Type Error");
+                yyerror("Type Mismatch");
             }
         }
         ;
@@ -670,78 +756,108 @@ inclusive_or_expression:
 logical_and_expression: 
         inclusive_or_expression
         {
-            $$ = $1;    // Simple assignment
+            $$ = $1;                                                                                            //transfer the content
         }
         | logical_and_expression LOGICAL_AND M inclusive_or_expression
         {
             /*
-                Here, we have augmented the grammar with the non-terminal M to facilitate backpatching
+                augmented the grammar with the non-terminal M marker to have a track of next instruction to be executed during backpatching
             */
-            convert_int_bool($1);                                   // Convert the expressions from int to bool
+            convert_int_bool($1);                                                                               // Convert the expressions from int to bool
             convert_int_bool($4);
-            $$ = new expression();                                  // Create a new bool expression for the result
+            $$ = new expression();                                                                              // Create a new bool expression for the result
             $$->type = "bool";
-            backpatch($1->truelist, $3);                            // Backpatching
-            $$->truelist = $4->truelist;                            // Generate truelist from truelist of $4
-            $$->falselist = merge_list($1->falselist, $4->falselist);    // Generate falselist by merging the falselists of $1 and $4
+            backpatch($1->truelist, $3);                                                                        // Backpatching
+            $$->truelist = $4->truelist;                                                                        // Generate truelist from truelist of $4
+            $$->falselist = merge_list($1->falselist, $4->falselist);                                           // Generate falselist by merging the falselists of $1 and $4
+            // B-> B1 && MB2
+            // B.truelist = B2.truelist
+            // backpatch(B1.truelist, M.instr)
+            //B.falselist = merge(B1.falselist, B2.falselist)
+        
         }
         ;
 
 logical_or_expression: 
         logical_and_expression
-        {
-            $$ = $1;    // Simple assignment
+        {   
+            $$ = $1;                                                                                            //transfer the content
         }
         | logical_or_expression LOGICAL_BITWISE_OR M logical_and_expression
         {
-            convert_int_bool($1);                                   // Convert the expressions from int to bool
+            convert_int_bool($1);                                                                              // Convert the expressions from int to bool
             convert_int_bool($4);
-            $$ = new expression();                                  // Create a new bool expression for the result
+            $$ = new expression();                                                                             // Create a new bool expression for the result
             $$->type = "bool";
-            backpatch($1->falselist, $3);                           // Backpatching
-            $$->falselist = $4->falselist;                          // Generate falselist from falselist of $4
-            $$->truelist = merge_list($1->truelist, $4->truelist);       // Generate truelist by merging the truelists of $1 and $4
+            backpatch($1->falselist, $3);                                                                      // Backpatching
+            $$->falselist = $4->falselist;                                                                     // Generate falselist from falselist of $4
+            $$->truelist = merge_list($1->truelist, $4->truelist);                                             // Generate truelist by merging the truelists of $1 and $4
+            // B-> B1 || MB2
+            // B.falselist = B2.falselist
+            // backpatch(B1.falselist, M.instr)
+            //B.truelist = merge(B1.truelist, B2.truelist)
+        
         }
         ;
 
 conditional_expression: 
         logical_or_expression
         {
-            $$ = $1;    // Simple assignment
+            $$ = $1;                                                                                            //transfer the content
         }
         | logical_or_expression N QUESTION_MARK M expression N COLON M conditional_expression
         {   
             /*
-                Note the augmented grammar with the non-terminals M and N
+                grammar is augmented with the non-terminals M marker and N to keep track of next instruction during backpatching
             */
-            $$->location = symbol_table::generate_tem_var($5->location->type);      // Generate temporary for the expression
-            $$->location->update_entry($5->location->type);
-            add_TAC("=", $$->location->name, $9->location->name);            // Assign the conditional expression
+            $$->location = symbol_table::generate_tem_var($5->location->type);                                  // Generate temporary for the expression
+            
+            add_TAC("=", $$->location->name, $9->location->name);                                               //control through fall
             list<int> l1 = makelist(next_instr_count());
-            add_TAC("goto", "");                                   // Prevent fall-through
-            backpatch($6->nextlist, next_instr_count());               // Make list with next instruction
+            add_TAC("goto", "");                                                                                // Prevent fall-through
+            backpatch($6->nextlist, next_instr_count());                                                        // Make list with next instruction
             add_TAC("=", $$->location->name, $5->location->name);
-            list<int> l2 = makelist(next_instr_count());               // Make list with next instruction
-            l1 = merge_list(l1, l2);                                 // Merge the two lists
-            add_TAC("goto", "");                                   // Prevent fall-through
-            backpatch($2->nextlist, next_instr_count());               // Backpatching
-            convert_int_bool($1);                               // Convert expression to bool
-            backpatch($1->truelist, $4);                        // When $1 is true, control goes to $4 (expression)
-            backpatch($1->falselist, $8);                       // When $1 is false, control goes to $8 (conditional_expression)
+            list<int> l2 = makelist(next_instr_count());                                                        // Make list with next instruction
+            l1 = merge_list(l1, l2);                                                                            // Merge the two lists
+            add_TAC("goto", "");                                                                                // Prevent fall-through
+            backpatch($2->nextlist, next_instr_count());                                                        // Backpatching
+            convert_int_bool($1);                                                                               // Convert expression to bool
+            backpatch($1->truelist, $4);                                                                        // When $1 is true, control goes to $4 (expression)
+            backpatch($1->falselist, $8);                                                                       // When $1 is false, control goes to $8 (conditional_expression)
             backpatch(l1, next_instr_count());
+            /*
+            For E -> E1 N1 ? M1 E2 N2 : M2 E3
+            E.loc = gentemp();
+            E.type = E2.type; // Assume E2.type = E3.type
+            add_TAC(E.loc ’=’ E3 .loc); // Control gets here by fall-through
+            l = makelist(nextinstr);
+            add_TAC(goto .... );
+            backpatch(N 2 .nextlist, nextinstr);
+            add_TAC(E .loc ’=’ E 2 .loc);
+            l = merge(l, makelist(nextinstr));
+            add_TAC(goto .... );                   
+            backpatch(N1 .nextlist, nextinstr);
+            convInt2Bool(E1);
+            backpatch(E1 .truelist, M1 .instr); //backpatching
+            backpatch(E1 .falselist, M2 .instr);
+            backpatch(l, nextinstr);
+            */
+        
         }
         ;
 
-M: %empty
-        {   
-            // Stores the next instruction value, and helps in backpatching
+M:      %empty
+        {  
+            //M - > epsilon 
+            //store the count of theb next instruction and will be used for backpatching in control flow statements
             $$ = next_instr_count();
         }
         ;
 
-N: %empty
+N:      %empty
         {
-            // Helps in control flow
+            // N -> epsilon 
+            // Helps in control flow statments
             $$ = new statement();
             $$->nextlist = makelist(next_instr_count());
             add_TAC("goto", "");
@@ -751,20 +867,20 @@ N: %empty
 assignment_expression: 
         conditional_expression
         {
-            $$ = $1;    // Simple assignment
+            $$ = $1;                                                                                                //transfer the content
         }
         | unary_expression assignment_operator assignment_expression
         {
-            if($1->arr_type == "arr") {        // If arr_type is "arr", convert and add_TAC
+            if($1->arr_type == "arr") {                                                                             // If arr_type is "arr", convert and create a TAC quad
                 $3->location = convert_type($3->location, $1->type->type);
-                add_TAC("[]=", $1->array_data_type->name, $1->location->name, $3->location->name);
+                add_TAC("[]=", $1->array->name, $1->location->name, $3->location->name);
             }
-            else if($1->arr_type == "ptr") {   // If arr_type is "ptr", add_TAC 
-                add_TAC("*=", $1->array_data_type->name, $3->location->name);
+            else if($1->arr_type == "ptr") {                                                                        // If arr_type is "ptr", create a TAC quad 
+                add_TAC("*=", $1->array->name, $3->location->name);
             }
             else {
-                $3->location = convert_type($3->location, $1->array_data_type->type->type);
-                add_TAC("=", $1->array_data_type->name, $3->location->name);
+                $3->location = convert_type($3->location, $1->array->type->type);                                   //for other types convert the data type to make them compatible and create a TAC quad
+                add_TAC("=", $1->array->name, $3->location->name);
             }
             $$ = $3;
         }
@@ -772,27 +888,27 @@ assignment_expression:
 
 assignment_operator: 
         ASSIGN
-        { /* Ignored */ }
+        {}
         | MUL_ASSIGN
-        { /* Ignored */ }
+        {}
         | DIV_ASSIGN
-        { /* Ignored */ }
+        {}
         | MODULO_ASSIGN
-        { /* Ignored */ }
+        {}
         | PLUS_ASSIGN
-        { /* Ignored */ }
+        {}
         | MINUS_ASSIGN
-        { /* Ignored */ }
+        {}
         | LEFT_SHIFT_ASSIGN
-        { /* Ignored */ }
+        {}
         | RIGHT_SHIFT_ASSIGN
-        { /* Ignored */ }
+        {}
         | BITWISE_AND_ASSIGN
-        { /* Ignored */ }
+        {}
         | BITWISE_OR_ASSIGN
-        { /* Ignored */ }
+        {}
         | BITWISE_XOR_ASSIGN
-        { /* Ignored */ }
+        {}
         ;
 
 expression: 
@@ -801,45 +917,47 @@ expression:
             $$ = $1;
         }
         | expression COMMA assignment_expression
-        { /* Ignored */ }
+        {}
         ;
 
 constant_expression: 
         conditional_expression
-        { /* Ignored */ }
+        {}
         ;
 
+    //declaration
+//these productions will be responsible for updating and creating symbol table
 declaration: 
         declaration_specifiers init_declarator_list SEMI_COLON
-        { /* Ignored */ }
+        {}
         | declaration_specifiers SEMI_COLON
-        { /* Ignored */ }
+        {}
         ;
 
 declaration_specifiers: 
         storage_class_specifier declaration_specifiers
-        { /* Ignored */ }
+        {}
         |storage_class_specifier
-        { /* Ignored */ }
+        {}
         | type_specifier declaration_specifiers
-        { /* Ignored */ }
+        {}
         | type_specifier
-        { /* Ignored */ }
+        {}
         | type_qualifier declaration_specifiers
-        { /* Ignored */ }
+        {}
         | type_qualifier
-        { /* Ignored */ }
+        {}
         | function_specifier declaration_specifiers
-        { /* Ignored */ }
+        {}
         | function_specifier
-        { /* Ignored */ }
+        {}
         ;
 
 init_declarator_list: 
         init_declarator
-        { /* Ignored */ }
+        {}
         | init_declarator_list COMMA init_declarator
-        { /* Ignored */ }
+        {}
         ;
 
 init_declarator: 
@@ -849,26 +967,28 @@ init_declarator:
         }
         | declarator ASSIGN initializer
         {   
-            // Find out the initial value and add_TAC it
+            //asssign the initial value to the symbol if any
             if($3->value != "") {
                 $1->value = $3->value;
             }
+            //generate a TAC quad for the same
             add_TAC("=", $1->name, $3->name);
         }
         ;
 
 storage_class_specifier: 
         EXTERN
-        { /* Ignored */ }
+        {}
         | STATIC
-        { /* Ignored */ }
+        {}
         | AUTO
-        { /* Ignored */ }
+        {}
         | REGISTER
-        { /* Ignored */ }
+        {}
         ;
 
-type_specifier: 
+type_specifier:
+        //since we are asked to handle only void char int and float data type, semantic rules for the same have been added.
         VOID
         {
             prev_var = "void";   // Store the latest encountered type in prev_var
@@ -878,304 +998,331 @@ type_specifier:
             prev_var = "char";   // Store the latest encountered type in prev_var
         }
         | SHORT
-        { /* Ignored */ }
+        {}
         | INT
         {
             prev_var = "int";    // Store the latest encountered type in prev_var
         }
         | LONG
-        { /* Ignored */ }
+        {}
         | FLOAT
         {
             prev_var = "float";  // Store the latest encountered type in prev_var
         }
         | DOUBLE
-        { /* Ignored */ }
+        {}
         | SIGNED
-        { /* Ignored */ }
+        {}
         | UNSIGNED
-        { /* Ignored */ }
+        {}
         | _BOOL
-        { /* Ignored */ }
+        {}
         | _COMPLEX
-        { /* Ignored */ }
+        {}
         | _IMAGINARY
-        { /* Ignored */ }
+        {}
         | enum_specifier
-        { /* Ignored */ }
+        {}
         ;
 
 specifier_qualifier_list: 
         type_specifier specifier_qualifier_listopt
-        { /* Ignored */ }
+        {}
         | type_qualifier specifier_qualifier_listopt
-        { /* Ignored */ }
+        {}
         ;
 
 specifier_qualifier_listopt: 
         specifier_qualifier_list
-        { /* Ignored */ }
-        | %empty
-        { /* Ignored */ }
+        {}
+        |%empty
+        {}
         ;
 
 enum_specifier: 
         ENUM identifieropt LEFT_CURLY enumerator_list RIGHT_CURLY
-        { /* Ignored */ }
+        {}
         | ENUM identifieropt LEFT_CURLY enumerator_list COMMA RIGHT_CURLY
-        { /* Ignored */ }
+        {}
         | ENUM IDENTIFIER
-        { /* Ignored */ }
+        {}
         ;
 
 identifieropt: 
         IDENTIFIER
-        {/* Ignored */}
-        | %empty
-        {/* Ignored */}
+        {}
+        |%empty
+        {}
         ;
 
 enumerator_list: 
         enumerator
-        {/* Ignored */}
+        {}
         | enumerator_list COMMA enumerator
-        {/* Ignored */}
+        {}
         ;
 
 enumerator: 
         IDENTIFIER
-        {/* Ignored */}
+        {}
         | IDENTIFIER ASSIGN constant_expression
-        {/* Ignored */}
+        {}
         ;
 
 type_qualifier: 
         CONST
-        {/* Ignored */}
+        {}
         | RESTRICT
-        {/* Ignored */}
+        {}
         | VOLATILE
-        {/* Ignored */}
+        {}
         ;
 
 function_specifier: 
         INLINE
-        {/* Ignored */}
+        {}
         ;
 
 declarator: 
         pointer direct_declarator
         {
             ST_entry_type* t = $1;
-            // In case of multi-dimesnional array_data_types, keep on going down in a hierarchial fashion to get the base type
+            // In case of multi-dimensional arrays, keep traversing down until t points to a basic data type
             while(t->derived_arr != NULL) {
                 t = t->derived_arr;
             }
-            t->derived_arr = $2->type;  // Store the base type
-            $$ = $2->update_entry($1);    // Update
+            t->derived_arr = $2->type;       // t now stores a basic data type
+            $$ = $2->update_entry($1);       // Update the direct_declarator
         }
         | direct_declarator
-        {/* Ignored */}
+        {}
         ;
 
 direct_declarator: 
         IDENTIFIER
         {
-            $$ = $1->update_entry(new ST_entry_type(prev_var));   // For an identifier, update the type to prev_var
-            curr_symbol = $$;                         // Update pointer to current symbol
+            $$ = $1->update_entry(new ST_entry_type(prev_var));   // For the new identifier create a new symbol of previous symbol type
+            curr_symbol = $$;                                     // Update pointer to current symbol
         }
         | LEFT_PARENTHESES declarator RIGHT_PARENTHESES
         {
-            $$ = $2;    // Simple assignment
+            $$ = $2;                                              //transfer the content
         }
         | direct_declarator LEFT_SQUARE type_qualifier_list assignment_expression RIGHT_SQUARE
-        { /* Ignored */ }
+        {}
         | direct_declarator LEFT_SQUARE type_qualifier_list RIGHT_SQUARE
-        { /* Ignored */ }
+        {}
         | direct_declarator LEFT_SQUARE assignment_expression RIGHT_SQUARE
         {
             ST_entry_type* t = $1->type;
             ST_entry_type* prev = NULL;
-            // Keep moving recursively to get the base type
+
+            // traverse down the array to get the base data type of the array
             while(t->type == "arr") {
                 prev = t;
                 t = t->derived_arr;
             }
             if(prev == NULL) {
-                int temp = atoi($3->location->value.c_str());                // Get initial value
-                ST_entry_type* tp = new ST_entry_type("arr", $1->type, temp); // Create that type
-                $$ = $1->update_entry(tp);                                    // Update the symbol table for that symbol
+                //that is the type of t is not array
+                // create a new array with base data type as type of direct_declarator and width is value of assignment_expression
+
+                int temp = atoi($3->location->value.c_str());                   // Get initial value
+                ST_entry_type* tp = new ST_entry_type("arr", $1->type, temp);   // Create that type
+                $$ = $1->update_entry(tp);                                      // Update the symbol table for that symbol
             }
             else {
-                int temp = atoi($3->location->value.c_str());                // Get initial value
-                prev->derived_arr = new ST_entry_type("arr", t, temp);         // Create that type
-                $$ = $1->update_entry($1->type);                              // Update the symbol table for that symbol
+                //t is of type array i.e. this declaration will add a dimension to the array
+                // another level of nesting with width being the value of assignment_expression
+                
+                int temp = atoi($3->location->value.c_str());                   // Get initial value
+                prev->derived_arr = new ST_entry_type("arr", t, temp);          // Create that type
+                $$ = $1->update_entry($1->type);                                // Update the symbol table for that symbol
             }
         }
         | direct_declarator LEFT_SQUARE RIGHT_SQUARE
         {
             ST_entry_type* t = $1->type;
             ST_entry_type* prev = NULL;
-            // Keep moving recursively to get the base type
+            
+            // traverse down the array to get the basic data type
             while(t->type == "arr") {
                 prev = t;
                 t = t->derived_arr;
             }
             if(prev == NULL) {
+                //if the t is not of tytpe array
+                //this will create an array of size 0
                 ST_entry_type* tp = new ST_entry_type("arr", $1->type, 0);
                 $$ = $1->update_entry(tp);
             }
             else {
+                //if t is already of type array, this will create a new level of nesting of width 0
                 prev->derived_arr = new ST_entry_type("arr", t, 0);
                 $$ = $1->update_entry($1->type);
             }
         }
         | direct_declarator LEFT_SQUARE STATIC type_qualifier_list assignment_expression RIGHT_SQUARE
-        { /* Ignored */ }
+        {}
         | direct_declarator LEFT_SQUARE STATIC assignment_expression RIGHT_SQUARE
-        { /* Ignored */ }
+        {}
         | direct_declarator LEFT_SQUARE type_qualifier_list STATIC assignment_expression RIGHT_SQUARE
-        { /* Ignored */ }
+        {}
         | direct_declarator LEFT_SQUARE type_qualifier_list MUL RIGHT_SQUARE
-        { /* Ignored */ }
+        {}
         | direct_declarator LEFT_SQUARE MUL RIGHT_SQUARE
-        { /* Ignored */ }
+        {}
         | direct_declarator LEFT_PARENTHESES change_table parameter_type_list RIGHT_PARENTHESES
         {
+            //function declaration
+            //extract the current symbol table
             curr_symb_table->name = $1->name;
+            
+            //if the return type of the function is void
             if($1->type->type != "void") {
-                ST_entry* s = curr_symb_table->search_lexeme("return");    // Lookup for return value
+                //look for the symbol table entry with name return
+                ST_entry* s = curr_symb_table->search_lexeme("return");    
+                //store the type void as the value of symbol return
                 s->update_entry($1->type);
             }
+
+            //make this table nested to the gloabl symbol table
             $1->nested_symbol_table = curr_symb_table;
-            curr_symb_table->parent = global_symb_table;   // Update parent symbol table
-            move_to_table(global_symb_table);          // Switch current table to point to the global symbol table
-            curr_symbol = $$;             // Update current symbol
+            curr_symb_table->parent = global_symb_table;    // Update parent of current symbol table
+            move_to_table(global_symb_table);               // Switch current table to global symbol table
+            curr_symbol = $$;                               // Update current symbol
         }
         | direct_declarator LEFT_PARENTHESES identifier_list RIGHT_PARENTHESES
-        { /* Ignored */ }
+        {}
         | direct_declarator LEFT_PARENTHESES change_table RIGHT_PARENTHESES
         {
+            //function with no parameters
+            //extract the current symbol table
             curr_symb_table->name = $1->name;
+            //update the value of return symbol to void if the return data type is void
             if($1->type->type != "void") {
                 ST_entry* s = curr_symb_table->search_lexeme("return");    // Lookup for return value
                 s->update_entry($1->type);
             }
+
+            //make the symbol table of the function as nested table of global symbol table
             $1->nested_symbol_table = curr_symb_table;
-            curr_symb_table->parent = global_symb_table;   // Update parent symbol table
-            move_to_table(global_symb_table);          // Switch current table to point to the global symbol table
-            curr_symbol = $$;             // Update current symbol
+            curr_symb_table->parent = global_symb_table;        // Update parent symbol table
+            move_to_table(global_symb_table);                   // Switch current table to global symbol table
+            curr_symbol = $$;                                   // Update current symbol
         }
         ;
 
 type_qualifier_listopt: 
         type_qualifier_list
-        { /* Ignored */ }
-        | %empty
-        { /* Ignored */ }
+        {}
+        |%empty
+        {}
         ;
 
+// pointer declarations
 pointer: 
         MUL type_qualifier_listopt
         {
-            $$ = new ST_entry_type("ptr");     //  Create new type "ptr"
+            $$ = new ST_entry_type("ptr");                       //Create new symbol of type "ptr"
         }
         | MUL type_qualifier_listopt pointer
         {
-            $$ = new ST_entry_type("ptr", $3); //  Create new type "ptr"
+            $$ = new ST_entry_type("ptr", $3);                   //Create new symbol of type "ptr"
         }
         ;
 
 type_qualifier_list: 
         type_qualifier
-        { /* Ignored */ }
+        {}
         | type_qualifier_list type_qualifier
-        { /* Ignored */ }
+        {}
         ;
 
 parameter_type_list: 
         parameter_list
-        { /* Ignored */ }
+        {}
         | parameter_list COMMA ELLIPSIS
-        { /* Ignored */ }
+        {}
         ;
 
 parameter_list: 
         parameter_declaration
-        { /* Ignored */ }
+        {}
         | parameter_list COMMA parameter_declaration
-        { /* Ignored */ }
+        {}
         ;
 
 parameter_declaration: 
         declaration_specifiers declarator
-        { /* Ignored */ }
+        {}
         | declaration_specifiers
-        { /* Ignored */ }
+        {}
         ;
 
 identifier_list: 
         IDENTIFIER
-        { /* Ignored */ }
+        {}
         | identifier_list COMMA IDENTIFIER
-        { /* Ignored */ }
+        {}
         ;
 
 type_name: 
         specifier_qualifier_list
-        { /* Ignored */ }
+        {}
         ;
 
 initializer: 
         assignment_expression
         {
-            $$ = $1->location;   // Simple assignment
+            $$ = $1->location;  //transfer the content
         }
         | LEFT_CURLY initializer_list RIGHT_CURLY
-        { /* Ignored */ }
+        {}
         | LEFT_CURLY initializer_list COMMA RIGHT_CURLY
-        { /* Ignored */ }
+        {}
         ;
 
 initializer_list: 
         designationopt initializer
-        { /* Ignored */ }
+        {}
         | initializer_list COMMA designationopt initializer
-        { /* Ignored */ }
+        {}
         ;
 
 designationopt: 
         designation
-        { /* Ignored */ }
-        | %empty
-        { /* Ignored */ }
+        {}
+        |%empty
+        {}
         ;
 
 designation: 
         designator_list ASSIGN
-        { /* Ignored */ }
+        {}
         ;
 
 designator_list: 
         designator
-        { /* Ignored */ }
+        {}
         | designator_list designator
-        { /* Ignored */ }
+        {}
         ;
 
 designator: 
         LEFT_SQUARE constant_expression RIGHT_SQUARE
-        { /* Ignored */ }
+        {}
         | DOT IDENTIFIER
-        { /* Ignored */ }
+        {}
         ;
+
+// statements
 
 statement: 
         labeled_statement
-        { /* Ignored */ }
+        {}
         | compound_statement
         {
-            $$ = $1;    // Simple assignment
+            $$ = $1;                        //transfer the content
         }
         | expression_statement
         {
@@ -1184,22 +1331,22 @@ statement:
         }
         | selection_statement
         {
-            $$ = $1;    // Simple assignment
+            $$ = $1;                        //transfer the content
         }
         | iteration_statement
         {
-            $$ = $1;    // Simple assignment
+            $$ = $1;                        //transfer the content
         }
         | jump_statement
         {
-            $$ = $1;    // Simple assignment
+            $$ = $1;                        //transfer the content
         }
         ;
 
-/* New non-terminal that has been added to facilitate the structure of loops */
+/* new non-terminal for loop */
 loop_statement:
         labeled_statement
-        { /* Ignored */ }
+        {}
         | expression_statement
         {
             $$ = new statement();           // Create new statement
@@ -1207,154 +1354,171 @@ loop_statement:
         }
         | selection_statement
         {
-            $$ = $1;    // Simple assignment
+            $$ = $1;    // transfer the content
         }
         | iteration_statement
         {
-            $$ = $1;    // Simple assignment
+            $$ = $1;    // transfer the content
         }
         | jump_statement
         {
-            $$ = $1;    // Simple assignment
+            $$ = $1;    // transfer the content
         }
         ;
 
 labeled_statement: 
         IDENTIFIER COLON statement
-        { /* Ignored */ }
+        {}
         | CASE constant_expression COLON statement
-        { /* Ignored */ }
+        {}
         | DEFAULT COLON statement
-        { /* Ignored */ }
+        {}
         ;
 
 compound_statement: 
-        LEFT_CURLY X change_table blocationk_item_listopt RIGHT_CURLY
+        LEFT_CURLY change_block change_table block_item_listopt RIGHT_CURLY
         {
+            cout<<"compound_statement executed";
             /*
-                Here, the grammar has been augmented with non-terminals like X and change_table to allow creation of nested symbol tables
+                change_block marker has been added to allow symbol table creation for different blocks
             */
             $$ = $4;
-            move_to_table(curr_symb_table->parent);     // Update current symbol table
+            move_to_table(curr_symb_table->parent);//block has been parsed completely, swicth back to the parent symbol table
         }
         ;
 
-blocationk_item_listopt: 
-        blocationk_item_list
+block_item_listopt: 
+        block_item_list
         {
-            $$ = $1;    // Simple assignment
+            $$ = $1;                //transfer the content
         }
-        | %empty
+        |%empty
         {
             $$ = new statement();   // Create new statement
         }
         ;
 
-blocationk_item_list: 
-        blocationk_item
+block_item_list: 
+        block_item
         {
-            $$ = $1;    // Simple assignment
+            $$ = $1;                       //transfer the content
         }
-        | blocationk_item_list M blocationk_item
+        | block_item_list M block_item
         {   
             /*
-                This production rule has been augmented with the non-terminal M
+                M marker has been added to keep track of next instruction during backpatching
             */
             $$ = $3;
-            backpatch($1->nextlist, $2);    // After $1, move to blocationk_item via $2
+            backpatch($1->nextlist, $2);    // M.instr would be the next instruction after $1 so backpatch 
         }
         ;
 
-blocationk_item: 
+block_item: 
         declaration
         {
-            $$ = new statement();   // Create new statement
+            $$ = new statement();           // Create new statement
         }
         | statement
         {
-            $$ = $1;    // Simple assignment
+            $$ = $1;                        //transfer the content
         }
         ;
 
 expression_statement: 
         expression SEMI_COLON
         {
-            $$ = $1;    // Simple assignment
+            $$ = $1;                        //transfer the content
         }
         | SEMI_COLON
         {
-            $$ = new expression();  // Create new expression
+            $$ = new expression();          // Create new expression
         }
         ;
 
 selection_statement: 
-        IF LEFT_PARENTHESES expression N RIGHT_PARENTHESES M statement N %prec THEN
+/*
+
+If Else
+
+%prec THEN is to remove conflicts/ambiguity
+
+Marker M to keep track of next isntruction and N to keep track of nextlist
+
+S -> if (B) M S1 N
+backpatch(B.truelist, M.instr )
+temp = merge(S1.nextlist, N.nextlist)
+S.nextlist = merge(B.falselist,temp)
+
+S -> if (B) M1 S1 N else M2 S2
+backpatch(B.truelist, M1.instr)
+backpatch(B.falselist, M2.instr)
+temp = merge(S1.nextlist, N.nextlist)
+S.nextlist = merge(temp, S2 .nextlist)
+
+*/
+        IF LEFT_PARENTHESES expression RIGHT_PARENTHESES M statement N %prec THEN
         {
             /*
-                This production rule has been augmented for control flow
+                M and N markers help in backpatching
             */
-            backpatch($4->nextlist, next_instr_count());                   // nextlist of N now has next_instr_count
-            convert_int_bool($3);                                   // Convert expression to bool
-            $$ = new statement();                                   // Create new statement
-            backpatch($3->truelist, $6);                            // Backpatching - if expression is true, go to M
+            convert_int_bool($3);                                           // Convert expression to bool
+            $$ = new statement();                                           // Create new statement
+            backpatch($3->truelist, $5);                                    // Backpatching 
+            
             // Merge falselist of expression, nextlist of statement and nextlist of the last N
-            list<int> temp = merge_list($3->falselist, $7->nextlist);
-            $$->nextlist = merge_list($8->nextlist, temp);
+            list<int> temp = merge_list($7->nextlist, $6->nextlist);
+            $$->nextlist = merge_list($3->falselist, temp);
         }
-        | IF LEFT_PARENTHESES expression N RIGHT_PARENTHESES M statement N ELSE M statement
+        | IF LEFT_PARENTHESES expression RIGHT_PARENTHESES M statement N ELSE M statement
         {
             /*
-                This production rule has been augmented for control flow
+                M and N markers help in backpatching
             */
-            backpatch($4->nextlist, next_instr_count());                   // nextlist of N now has next_instr_count
             convert_int_bool($3);                                   // Convert expression to bool
             $$ = new statement();                                   // Create new statement
-            backpatch($3->truelist, $6);                            // Backpatching - if expression is true, go to first M, else go to second M
-            backpatch($3->falselist, $10);
+            backpatch($3->truelist, $5);                            // Backpatching
+            backpatch($3->falselist, $9);
+            
             // Merge nextlist of statement, nextlist of N and nextlist of the last statement
-            list<int> temp = merge_list($7->nextlist, $8->nextlist);
-            $$->nextlist = merge_list($11->nextlist, temp);
+            list<int> temp = merge_list($6->nextlist, $7->nextlist);
+            $$->nextlist = merge_list($10->nextlist, temp);
         }
         | SWITCH LEFT_PARENTHESES expression RIGHT_PARENTHESES statement
-        { /* Ignored */ }
+        {}
         ;
 
 iteration_statement: 
-        WHILE W LEFT_PARENTHESES X change_table M expression RIGHT_PARENTHESES M loop_statement
+
+        // W D and F will help us print the blockname (variable block)
+        //which we need to set before change_block is matched
+        // M and N markers are used as usual to keep a track of next instruction to be executed 
+        //which would be used for backpatching. 
+         WHILE W LEFT_PARENTHESES change_block change_table M expression RIGHT_PARENTHESES M loop_statement
         {   
-            /*
-                This production rule has been augmented with non-terminals like W, X, change_table and M to handle the control flow, 
-                backpatching, detect the kind of loop, create a separate symbol table for the loop blocationk and give it an appropriate name
-            */
+            
             $$ = new statement();                   // Create a new statement
             convert_int_bool($7);                   // Convert expression to bool
             backpatch($10->nextlist, $6);           // Go back to M1 and expression after one iteration of loop_statement
             backpatch($7->truelist, $9);            // Go to M2 and loop_statement if expression is true
             $$->nextlist = $7->falselist;           // Exit loop if expression is false
-            add_TAC("goto", convert_int_str($6));   // Emit to prevent fall-through
+            add_TAC("goto", convert_int_str($6));   // generate TAC for to prevent fall-through
             block = "";
             move_to_table(curr_symb_table->parent);
         }
-        | WHILE W LEFT_PARENTHESES X change_table M expression RIGHT_PARENTHESES LEFT_CURLY M blocationk_item_listopt RIGHT_CURLY
+        | WHILE W LEFT_PARENTHESES change_block change_table M expression RIGHT_PARENTHESES LEFT_CURLY M block_item_listopt RIGHT_CURLY
         {
-            /*
-                This production rule has been augmented with non-terminals like W, X, change_table and M to handle the control flow, 
-                backpatching, detect the kind of loop, create a separate symbol table for the loop blocationk and give it an appropriate name
-            */
+            
             $$ = new statement();                   // Create a new statement
             convert_int_bool($7);                   // Convert expression to bool
             backpatch($11->nextlist, $6);           // Go back to M1 and expression after one iteration
-            backpatch($7->truelist, $10);           // Go to M2 and blocationk_item_listopt if expression is true
+            backpatch($7->truelist, $10);           // Go to M2 and block_item_listopt if expression is true
             $$->nextlist = $7->falselist;           // Exit loop if expression is false
-            add_TAC("goto", convert_int_str($6));   // Emit to prevent fall-through
+            add_TAC("goto", convert_int_str($6));   // generate TAC for to prevent fall-through
             block = "";
             move_to_table(curr_symb_table->parent);
         }
         | DO D M loop_statement M WHILE LEFT_PARENTHESES expression RIGHT_PARENTHESES SEMI_COLON
         {
-            /*
-                This production rule has been augmented with non-terminals like D and M to handle the control flow, backpatching and detect the kind of loop
-            */
             $$ = new statement();                   // Create a new statement     
             convert_int_bool($8);                   // Convert expression to bool
             backpatch($8->truelist, $3);            // Go back to M1 and loop_statement if expression is true
@@ -1362,78 +1526,60 @@ iteration_statement:
             $$->nextlist = $8->falselist;           // Exit loop if expression is false  
             block = "";
         }
-        | DO D LEFT_CURLY M blocationk_item_listopt RIGHT_CURLY M WHILE LEFT_PARENTHESES expression RIGHT_PARENTHESES SEMI_COLON
+        | DO D LEFT_CURLY M block_item_listopt RIGHT_CURLY M WHILE LEFT_PARENTHESES expression RIGHT_PARENTHESES SEMI_COLON
         {
-            /*
-                This production rule has been augmented with non-terminals like D and M to handle the control flow, backpatching and detect the kind of loop
-            */
             $$ = new statement();                   // Create a new statement  
             convert_int_bool($10);                  // Convert expression to bool
-            backpatch($10->truelist, $4);           // Go back to M1 and blocationk_item_listopt if expression is true
-            backpatch($5->nextlist, $7);            // Go to M2 to check expression after blocationk_item_listopt is complete
+            backpatch($10->truelist, $4);           // Go back to M1 and block_item_listopt if expression is true
+            backpatch($5->nextlist, $7);            // Go to M2 to check expression after block_item_listopt is complete
             $$->nextlist = $10->falselist;          // Exit loop if expression is false  
             block = "";
         }
-        | FOR F LEFT_PARENTHESES X change_table declaration M expression_statement M expression N RIGHT_PARENTHESES M loop_statement
+        | FOR F LEFT_PARENTHESES change_block change_table declaration M expression_statement M expression N RIGHT_PARENTHESES M loop_statement
         {
-            /*
-                This production rule has been augmented with non-terminals like F, X, change_table and M to handle the control flow, 
-                backpatching, detect the kind of loop, create a separate symbol table for the loop blocationk and give it an appropriate name
-            */
+            
             $$ = new statement();                   // Create a new statement
             convert_int_bool($8);                   // Convert expression to bool
             backpatch($8->truelist, $13);           // Go to M3 if expression is true
             backpatch($11->nextlist, $7);           // Go back to M1 after N
             backpatch($14->nextlist, $9);           // Go back to expression after loop_statement
-            add_TAC("goto", convert_int_str($9));   // Emit to prevent fall-through
+            add_TAC("goto", convert_int_str($9));   // generate TAC for to prevent fall-through
             $$->nextlist = $8->falselist;           // Exit loop if expression_statement is false
             block = "";
             move_to_table(curr_symb_table->parent);
         }
-        | FOR F LEFT_PARENTHESES X change_table expression_statement M expression_statement M expression N RIGHT_PARENTHESES M loop_statement
+        | FOR F LEFT_PARENTHESES change_block change_table expression_statement M expression_statement M expression N RIGHT_PARENTHESES M loop_statement
         {
-            /*
-                This production rule has been augmented with non-terminals like F, X, change_table and M to handle the control flow, 
-                backpatching, detect the kind of loop, create a separate symbol table for the loop blocationk and give it an appropriate name
-            */
             $$ = new statement();                   // Create a new statement
             convert_int_bool($8);                   // Convert expression to bool
             backpatch($8->truelist, $13);           // Go to M3 if expression is true
             backpatch($11->nextlist, $7);           // Go back to M1 after N
             backpatch($14->nextlist, $9);           // Go back to expression after loop_statement
-            add_TAC("goto", convert_int_str($9));   // Emit to prevent fall-through
+            add_TAC("goto", convert_int_str($9));   // generate TAC for to prevent fall-through
             $$->nextlist = $8->falselist;           // Exit loop if expression_statement is false
             block = "";
             move_to_table(curr_symb_table->parent);
         }
-        | FOR F LEFT_PARENTHESES X change_table declaration M expression_statement M expression N RIGHT_PARENTHESES M LEFT_CURLY blocationk_item_listopt RIGHT_CURLY
+        | FOR F LEFT_PARENTHESES change_block change_table declaration M expression_statement M expression N RIGHT_PARENTHESES M LEFT_CURLY block_item_listopt RIGHT_CURLY
         {
-            /*
-                This production rule has been augmented with non-terminals like F, X, change_table and M to handle the control flow, 
-                backpatching, detect the kind of loop, create a separate symbol table for the loop blocationk and give it an appropriate name
-            */
             $$ = new statement();                   // Create a new statement
             convert_int_bool($8);                   // Convert expression to bool
             backpatch($8->truelist, $13);           // Go to M3 if expression is true
             backpatch($11->nextlist, $7);           // Go back to M1 after N
             backpatch($15->nextlist, $9);           // Go back to expression after loop_statement
-            add_TAC("goto", convert_int_str($9));   // Emit to prevent fall-through
+            add_TAC("goto", convert_int_str($9));   // generate TAC for to prevent fall-through
             $$->nextlist = $8->falselist;           // Exit loop if expression_statement is false
             block = "";
             move_to_table(curr_symb_table->parent);
         }
-        | FOR F LEFT_PARENTHESES X change_table expression_statement M expression_statement M expression N RIGHT_PARENTHESES M LEFT_CURLY blocationk_item_listopt RIGHT_CURLY
+        | FOR F LEFT_PARENTHESES change_block change_table expression_statement M expression_statement M expression N RIGHT_PARENTHESES M LEFT_CURLY block_item_listopt RIGHT_CURLY
         {
-            /*
-                This production rule has been augmented with non-terminals like F, X, change_table and M to handle the control flow, 
-                backpatching, detect the kind of loop, create a separate symbol table for the loop blocationk and give it an appropriate name
-            */
             $$ = new statement();                   // Create a new statement
             convert_int_bool($8);                   // Convert expression to bool
             backpatch($8->truelist, $13);           // Go to M3 if expression is true
             backpatch($11->nextlist, $7);           // Go back to M1 after N
             backpatch($15->nextlist, $9);           // Go back to expression after loop_statement
-            add_TAC("goto", convert_int_str($9));   // Emit to prevent fall-through
+            add_TAC("goto", convert_int_str($9));   // generate TAC for to prevent fall-through
             $$->nextlist = $8->falselist;           // Exit loop if expression_statement is false
             block = "";
             move_to_table(curr_symb_table->parent);
@@ -1442,54 +1588,49 @@ iteration_statement:
 
 F: %empty
         {   
-            /*
-            This non-terminal indicates the start of a for loop
-            */
-            block = "FOR";
+            //For Loop
+            block = "For";
         }
         ;
 
 W: %empty
         {
-            /*
-            This non-terminal indicates the start of a while loop
-            */
-            block = "WHILE";
+           // While Loop
+            block = "While";
         }
         ;
 
 D: %empty
         {
-            /*
-            This non-terminal indicates the start of a do-while loop
-            */
-            block = "DO_WHILE";
+            //Do While Loop
+            block = "Do_While";
         }
         ;
 
-X: %empty
+
+change_block:%empty
         {   
-            // Used for creating new nested symbol tables for nested blocationks
-            string newST = curr_symb_table->name + "." + block + "$" + to_string(num_ST++);  // Generate name for new symbol table
+            // Used for creating new nested symbol tables for nested blocks
+            string newST = curr_symb_table->name +"->" + block + "." + to_string(num_ST++);  // Generate name for new symbol table
             ST_entry* sym = curr_symb_table->search_lexeme(newST);
             sym->nested_symbol_table = new symbol_table(newST);  // Create new symbol table
             sym->name = newST;
             sym->nested_symbol_table->parent = curr_symb_table;
-            sym->type = new ST_entry_type("blocationk");    // The type will be "blocationk"
+            sym->type = new ST_entry_type("block");    // The type will be "block"
             curr_symbol = sym;    // Change the current symbol pointer
         }
         ;
 
-change_table: %empty
+change_table:%empty
         {   
-            // Used for changing the symbol table on encountering functions
+            // to chnage the symbol table whenever a function is called
             if(curr_symbol->nested_symbol_table != NULL) {
-                // If the symbol table already exists, switch to that table
+                // If the symbol table for that function already exists, switch to that table
                 move_to_table(curr_symbol->nested_symbol_table);
                 add_TAC("label", curr_symb_table->name);
             }
             else {
-                // If the symbol table does not exist already, create it and switch to it
+                // If the symbol table for the function doesn't exist, create a new one and move to the new symbol table
                 move_to_table(new symbol_table(""));
             }
         }
@@ -1497,7 +1638,7 @@ change_table: %empty
 
 jump_statement: 
         GOTO IDENTIFIER SEMI_COLON
-        { /* Ignored */ }
+        {}
         | CONTINUE SEMI_COLON
         {
             $$ = new statement();
@@ -1509,31 +1650,31 @@ jump_statement:
         | RETURN expression SEMI_COLON
         {
             $$ = new statement();
-            add_TAC("return", $2->location->name);  // Emit return alongwith return value
+            add_TAC("return", $2->location->name);  // generate TAC for return alongwith return value
         }
         | RETURN SEMI_COLON
         {
             $$ = new statement();
-            add_TAC("return", "");             // Emit return without any return value
+            add_TAC("return", "");                   // generate TAC for return without any return value
         }
         ;
 
 translation_unit: 
         external_declaration
-        { /* Ignored */ }
+        {}
         | translation_unit external_declaration
-        { /* Ignored */ }
+        {}
         ;
 
 external_declaration: 
         function_definition
-        { /* Ignored */ }
+        {}
         | declaration
-        { /* Ignored */ }
+        {}
         ;
 
 function_definition: 
-        declaration_specifiers declarator declaration_listopt change_table LEFT_CURLY blocationk_item_listopt RIGHT_CURLY
+        declaration_specifiers declarator declaration_listopt change_table LEFT_CURLY block_item_listopt RIGHT_CURLY
         {   
             curr_symb_table->parent = global_symb_table;
             num_ST = 0;
@@ -1543,22 +1684,20 @@ function_definition:
 
 declaration_listopt: 
         declaration_list
-        { /* Ignored */ }
-        | %empty
-        { /* Ignored */ }
+        {}
+        |%empty
+        {}
         ;
 
 declaration_list: 
         declaration
-        { /* Ignored */ }
+        {}
         | declaration_list declaration
-        { /* Ignored */ }
+        {}
         ;
                
 %%
 
-void yyerror(char* s) {
-    cout << "Error occurred: " << s << endl;
-    cout << "Line no.: " << lineno << endl;
-    cout << "Unable to parse: " << yytext << endl;
+void yyerror(string s) {
+    printf("error in Line: %d ( %s )\n" , lineno, s.c_str());
 }

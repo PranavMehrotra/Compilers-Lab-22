@@ -46,15 +46,15 @@ extern string prev_var;
 
 
     // Class to represent the type of a ST_entry in the symbol table
-    // these attributes will help us in finding the basic or derived array_data_type datatypes of the symbol table elements declared duirng declaration phase
+    // these attributes will help us in finding the basic or derived array datatypes of the symbol table elements declared duirng declaration phase
 
 class ST_entry_type {
 public:
     //Member variables
     string type;                    // type of the symbol
     int width;                      // width eg: 1 for basic types and 10 for arr[10]
-    ST_entry_type* derived_arr;     // symbol type for array_data_types i.e. derived data types i.e. multidimensional array_data_type 
-    //for a = int array_data_type[10][20], a->type=arr, a->width = 10, a->derived_arr->type = arr, a->derived_arr->width = 20, a->array_data_typeType->array_data_typeType->type = int
+    ST_entry_type* derived_arr;     // symbol type for array i.e. derived data types i.e. multidimensional array_data_type 
+    //for a = int array[10][20], a->type=arr, a->width = 10, a->derived_arr->type = arr, a->derived_arr->width = 20, a->array_data_typeType->array_data_typeType->type = int
 
     //Member function
     ST_entry_type(string type_, ST_entry_type* derived_arr_ = NULL, int width_ = 1); //constructor with default parameters
@@ -88,7 +88,7 @@ public:
 
     string arr_type;                 // type of array i.e. arr or pointer
     ST_entry* location;              // location of the array
-    ST_entry* array_data_type;       // symbol table entry 
+    ST_entry* array;       // symbol table entry 
     ST_entry_type* type;             // used for multidimensional array 
 };
 

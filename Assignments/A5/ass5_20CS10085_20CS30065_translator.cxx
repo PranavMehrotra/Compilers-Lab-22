@@ -58,9 +58,8 @@ ST_entry* symbol_table::search_lexeme(string name_var) {
     //after recursive calls to search_lexeme sample would contain pointer to symbol table entry of name_var
     //if the sample is still NULL, indicating that the variable is encountered for the first time thus create a new ST_entry object and insert it in the current symbol table
      
-    if(curr_symb_table == this && sample == NULL) {
+    if(curr_symb_table == this && !sample) {
         ST_entry* new_symbol = new ST_entry(name_var);
-        
         table.push_back(*new_symbol);
         return &(table.back());
     }
@@ -123,7 +122,7 @@ void symbol_table::print_ST() {
     cout << endl;
 
     list<symbol_table*> list_table;//to keep a list of nested tables 
-
+    cout <<"\n";
     // Print the symbols in the symbol table
     //cout<<left makes padding at end and setw sets the width of symbol
     for(list<ST_entry>::iterator iter = this->table.begin(); iter != this->table.end(); iter++) {
@@ -144,9 +143,7 @@ void symbol_table::print_ST() {
         }
     }
 
-    for(int i = 0; i < 120; i++) {
-        cout << '*';
-    }
+    
     cout << endl << endl;
 
     // Recursively call the print function for the nested symbol tables
@@ -286,7 +283,7 @@ void add_TAC(string operation, string result, float arg1, string arg2) {
 
 // Implementation of the makelist function
 list<int> makelist(int i) {
-    list<int> list_i(1, i);
+    list<int> list_i(i);
     return list_i;
 }
 
@@ -315,8 +312,10 @@ bool typecheck(ST_entry* &s1, ST_entry* &s2) {
         return true;
     else if(s2 = convert_type(s2, t1->type))
         return true;
-    else
+    else {
         return false;
+    }
+
 }
 
 bool typecheck(ST_entry_type* t1, ST_entry_type* t2) {
