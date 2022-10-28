@@ -1185,7 +1185,7 @@ direct_declarator:
                 s->update_entry($1->type);
             }
 
-            //make this table nested to the gloabl symbol table
+            //make this table nested to the global symbol table
             $1->nested_symbol_table = curr_symb_table;
             curr_symb_table->parent = global_symb_table;    // Update parent of current symbol table
             move_to_table(global_symb_table);               // Switch current table to global symbol table
