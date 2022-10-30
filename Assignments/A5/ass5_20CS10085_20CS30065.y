@@ -1378,7 +1378,7 @@ labeled_statement:
 compound_statement: 
         LEFT_CURLY change_block change_table block_item_listopt RIGHT_CURLY
         {
-            cout<<"compound_statement executed";
+            
             /*
                 change_block marker has been added to allow symbol table creation for different blocks
             */
