@@ -19,6 +19,16 @@ int main () {
     int y = 17;
     char ch = 'c', d = 'a';     // character definitions
 
+    while(a<10){
+        a++;
+        b=10;
+        int y=10;
+    }
+
+    int hjkfde;
+    hjkfe = 12;
+
+
     // Arithmetic Operations
     i = x + y;
     j = x - y;

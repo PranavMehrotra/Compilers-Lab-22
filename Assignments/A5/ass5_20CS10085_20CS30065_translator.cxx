@@ -3,27 +3,26 @@
 using namespace std;
 
 //Global Symbol Declaration
+int num_ST;                                                                         //number of symbol tables
+string prev_var;                                                                    //Used for storing the last encountered type
+string block;                                                                       //for naming nested blocks
+quad_TAC_arr quad_TAC_list;                                                         //list of TAC codes
 ST_entry* curr_symbol;                                                              //pointer to current symbol being processed
 symbol_table* curr_symb_table;                                                      //pointer to active symbol table
 symbol_table* global_symb_table;                                                    //pointer to global symbol table
-quad_TAC_arr quad_TAC_list;                                                         //list of TAC codes
-int num_ST;                                                                         //number of symbol tables
-string block;                                                                       //for naming nested blocks
-string prev_var;                                                                    //Used for storing the last encountered type
 
-//Class ST_entry_type  
-ST_entry_type::ST_entry_type(string type_, ST_entry_type* derived_arr_, int width_):// constructor for the ST_entry_type class
-    type(type_), width(width_), derived_arr(derived_arr_) {}                        //parameter intialization
 
 //-------------------------------------------------------------
-
 //Class ST_entry
-ST_entry::ST_entry(string name_, string temp, ST_entry_type* derived_arr, int width): name(name_), value("-"), offset(0), nested_symbol_table(NULL) 
+ST_entry::ST_entry(string name_, string temp, ST_entry_type* derived_arr, int width): name(name_), value("--"), offset(0), nested_symbol_table(NULL) 
 {
     // constructor for the symbol class
     type = new ST_entry_type(temp, derived_arr, width);
     size = type_sizeof(type);
 }
+//Class ST_entry_type  
+ST_entry_type::ST_entry_type(string type_, ST_entry_type* derived_arr_, int width_):// constructor for the ST_entry_type class
+    type(type_), width(width_), derived_arr(derived_arr_) {}                        //parameter intialization
 
 ST_entry* ST_entry::update_entry(ST_entry_type* temp) 
 {
@@ -32,7 +31,6 @@ ST_entry* ST_entry::update_entry(ST_entry_type* temp)
     size = type_sizeof(temp);   //update the size i.e. number of bytes corresponding to temp
     return this;                //return the present class object
 }
-
 //-------------------------------------------------------------
 
 //Class symbol_table
@@ -91,7 +89,7 @@ ST_entry* symbol_table::generate_tem_var(ST_entry_type* temp, string intial_valu
 void symbol_table::print_ST() {
 
     //codes for basic formatting 
-    for(int i = 0; i < 120; i++) 
+    for(int i = 0; i < 150; i++) 
     {
         cout << '*';
     }
@@ -101,21 +99,21 @@ void symbol_table::print_ST() {
     cout << "\nSymbol Table: " << setfill(' ') << left << setw(50) << this->name; //print the Symbol table name with appropriate format
     cout << "Parent Table: " << setfill(' ') << left << setw(50) << ((this->parent != NULL) ? this->parent->name : "NULL") << endl;
     
-    for(int i = 0; i < 120; i++) 
+    for(int i = 0; i < 150; i++) 
     {
         cout << '*';
     }
     cout << "\n";
 
     // Symbol Table Column names
-    cout << setfill(' ') << left << setw(25) <<  "\nName"; //name of variable
+    cout << setfill(' ') << left << setw(40) <<  "\nName"; //name of variable
     cout << left << setw(25) << "Type";                  //type of variable
     cout << left << setw(20) << "Initial Value";         //intial value of variable if any
     cout << left << setw(15) << "Size";                  //size of the variable
     cout << left << setw(15) << "Offset";                //offset to keep track of relative addressing 
     cout << left << "Nested" << endl;                    //pointer to nested table if any
 
-    for(int i = 0; i < 120; i++) 
+    for(int i = 0; i < 150; i++) 
     {
         cout << '*';
     }
@@ -126,9 +124,9 @@ void symbol_table::print_ST() {
     // Print the symbols in the symbol table
     //cout<<left makes padding at end and setw sets the width of symbol
     for(list<ST_entry>::iterator iter = this->table.begin(); iter != this->table.end(); iter++) {
-        cout << left << setw(25) << iter->name;
+        cout << left << setw(40) << iter->name;
         cout << left << setw(25) << check_type(iter->type);
-        cout << left << setw(20) << (iter->value != "" ? iter->value : "nil");
+        cout << left << setw(20) << (iter->value != "" ? iter->value : "--");
         cout << left << setw(15) << iter->size;
         cout << left << setw(15) << iter->offset;
         cout << left;
@@ -235,12 +233,12 @@ void quad_TAC::print_quad() {
 
 // Implementations of constructors and functions for the quad_TAC_array class
 void quad_TAC_arr::print_quad_list() {
-    for(int i = 0; i < 120; i++) {
+    for(int i = 0; i < 150; i++) {
         cout << '*';
     }
     cout << endl;
     cout << "\nThree Address Code (TAC):" << endl;
-    for(int i = 0; i < 120; i++) {
+    for(int i = 0; i < 150; i++) {
         cout << '*';
     }
     cout << endl;
