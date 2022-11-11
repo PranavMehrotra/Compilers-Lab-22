@@ -91,8 +91,8 @@
         iteration_statement
         labeled_statement 
         jump_statement
-        blocationk_item
-        blocationk_item_list
+        block_item
+        block_item_list
         initializer
         M
         N
@@ -1651,30 +1651,31 @@ labeled_statement:
 compound_statement: 
         LEFT_CURLY RIGHT_CURLY
         {}
-        | LEFT_CURLY blocationk_item_list RIGHT_CURLY
+        | LEFT_CURLY block_item_list RIGHT_CURLY
         {
             $$ = $2;
         }
         ;
 
-blocationk_item_list: 
-        blocationk_item
+block_item_list: 
+        block_item
         {
             $$ = $1;    // copy content from right to left
             backpatch($1->nextlist, next_instruction);
         }
-        | blocationk_item_list M blocationk_item
+        | block_item_list M block_item
         {   
+            
             /*
-                This production rule has been augmented with the non-terminal M
+                M marker has been added to keep track of next instruction during backpatching
             */
             $$ = new expression();
-            backpatch($1->nextlist, $2->instr);    // After $1, move to blocationk_item via $2
+            backpatch($1->nextlist, $2->instr);    // M.instr would be the next instruction after $1 so backpatch 
             $$->nextlist = $3->nextlist;
         }
         ;
 
-blocationk_item: 
+block_item: 
         declaration
         {
             $$ = new expression();   // new expression node
@@ -1691,16 +1692,38 @@ expression_statement:
         }
         ;
 
-selection_statement: 
+selection_statement:
+/*
+
+If Else
+
+%prec THEN is to remove conflicts/ambiguity
+
+Marker M to keep track of next isntruction and N to keep track of nextlist
+
+S -> if (B) M S1 N
+backpatch(B.truelist, M.instr )
+temp = merge(S1.nextlist, N.nextlist)
+S.nextlist = merge(B.falselist,temp)
+
+S -> if (B) M1 S1 N else M2 S2
+backpatch(B.truelist, M1.instr)
+backpatch(B.falselist, M2.instr)
+temp = merge(S1.nextlist, N.nextlist)
+S.nextlist = merge(temp, S2 .nextlist)
+
+*/
+
         IF LEFT_PARENTHESIS expression N RIGHT_PARENTHESIS M statement N
         {
             /*
-                This production rule has been augmented for control flow
+                M and N markers help in backpatching
             */
-            backpatch($4->nextlist, next_instruction);         // nextlist of N now has next_instruction
+            backpatch($4->nextlist, next_instruction);         //backpatching
             convertIntToBool($3);                       // Convert expression to bool
-            backpatch($3->truelist, $6->instr);         // Backpatching - if expression is true, go to M
+            backpatch($3->truelist, $6->instr);         // Backpatching 
             $$ = new expression();                      // new expression node
+            
             // Merge falselist of expression, nextlist of statement and nextlist of the last N
             $7->nextlist = merge($8->nextlist, $7->nextlist);
             $$->nextlist = merge($3->falselist, $7->nextlist);
@@ -1708,13 +1731,14 @@ selection_statement:
         | IF LEFT_PARENTHESIS expression N RIGHT_PARENTHESIS M statement N ELSE M statement N
         {
             /*
-                This production rule has been augmented for control flow
+                M and N markers help in backpatching
             */
-            backpatch($4->nextlist, next_instruction);         // nextlist of N now has next_instruction
+            backpatch($4->nextlist, next_instruction);         // backpatching
             convertIntToBool($3);                       // Convert expression to bool
-            backpatch($3->truelist, $6->instr);         // Backpatching - if expression is true, go to first M, else go to second M
+            backpatch($3->truelist, $6->instr);         // backpatching
             backpatch($3->falselist, $10->instr);
             $$ = new expression();                      // new expression node
+            
             // Merge nextlist of statement, nextlist of N and nextlist of the last statement
             $$->nextlist = merge($7->nextlist, $8->nextlist);
             $$->nextlist = merge($$->nextlist, $11->nextlist);
@@ -1725,25 +1749,24 @@ selection_statement:
         ;
 
 iteration_statement: 
+        // M and N markers are used as usual to keep a track of next instruction to be executed 
+        //which would be used for backpatching. 
         WHILE M LEFT_PARENTHESIS expression N RIGHT_PARENTHESIS M statement
         {   
-            /*
-                This production rule has been augmented with non-terminals like M and N to handle the control flow and backpatching
-            */
-            $$ = new expression();                   // Create a new expression
-            add_TAC("", "", "", GOTO);
+            
+            $$ = new expression();                      // Create a new expression
+            add_TAC("", "", "", GOTO);                  // add TAC with missing label
+            
             backpatch(makelist(next_instruction - 1), $2->instr);
             backpatch($5->nextlist, next_instruction);
-            convertIntToBool($4);                   // Convert expression to bool
-            $$->nextlist = $4->falselist;           // Exit loop if expression is false
-            backpatch($4->truelist, $7->instr);     // Backpatching - if expression is true, go to M
-            backpatch($8->nextlist, $2->instr);     // Backpatching - go to the beginning of the loop
+            convertIntToBool($4);                       // Convert expression to bool
+            $$->nextlist = $4->falselist;               // Exit loop if expression is false
+            backpatch($4->truelist, $7->instr);         // Backpatching - if expression is true, go to M
+            backpatch($8->nextlist, $2->instr);         // Backpatching - go to the beginning of the loop
         }
         | DO M statement M WHILE LEFT_PARENTHESIS expression N RIGHT_PARENTHESIS SEMICOLON
         {
-            /*
-                This production rule has been augmented with non-terminals like M and N to handle the control flow and backpatching
-            */
+            
             $$ = new expression();                  // Create a new expression  
             backpatch($8->nextlist, next_instruction);     // Backpatching 
             convertIntToBool($7);                   // Convert expression to bool
@@ -1753,9 +1776,7 @@ iteration_statement:
         }
         | FOR LEFT_PARENTHESIS expression_statement M expression_statement N M expression N RIGHT_PARENTHESIS M statement
         {
-            /*
-                This production rule has been augmented with non-terminals like M and N to handle the control flow and backpatching
-            */
+            
             $$ = new expression();                   // Create a new expression
             add_TAC("", "", "", GOTO);
             $12->nextlist = merge($12->nextlist, makelist(next_instruction - 1));

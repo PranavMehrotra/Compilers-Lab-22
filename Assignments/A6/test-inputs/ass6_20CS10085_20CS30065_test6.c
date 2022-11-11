@@ -28,7 +28,7 @@ int main() {
             { 
                 int w = 3;
                 if (w == 3) {
-                    printStr("\nEntered in the w == 3 condition if blocationk.");
+                    printStr("\nEntered in the w == 3 condition if block.");
                 }
                 printStr("\nScope 3: ");
                 printInt(w);
