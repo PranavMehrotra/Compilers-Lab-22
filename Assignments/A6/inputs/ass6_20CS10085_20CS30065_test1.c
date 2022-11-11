@@ -1,11 +1,10 @@
-// This program tests function declaration, calling, global variable scope, some operators : +, -, etc. 
-// Checks basic statements, expression, readInt and printInt library functions created earlier
-// Also checks the recursive fibonacci function to check the function call and return methodology
+// This test checks basic statements, expression, readInt and printInt library functions created earlier
+// Also it checks the recursive factorial function to check the function call and return methodology
 int printStr (char *ch);
 int printInt (int n);
 int readInt (int *eP);
 
-int global_count = 0;                         // Testing global variable
+int global_count = 0;                         // Testing global variables
 int count = 0;
 
 int fac (int n);                           // Testing function declaration
@@ -14,7 +13,7 @@ int main () {
     count++;
     global_count = count;
     int n, flag;
-    printStr("Enter n (n < 20): ");
+    printStr("Enter n (n < 16): ");
     n = readInt(&flag);
     int i;
     int factorial[100];
@@ -35,6 +34,7 @@ int main () {
     return 0;
 }
 
+// Function definition
 int fac (int n) {
     count++;
     global_count = count;
