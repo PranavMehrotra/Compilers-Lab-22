@@ -1761,8 +1761,8 @@ iteration_statement:
             backpatch($5->nextlist, next_instruction);
             convertIntToBool($4);                       // Convert expression to bool
             $$->nextlist = $4->falselist;               // Exit loop if expression is false
-            backpatch($4->truelist, $7->instr);         // Backpatching - if expression is true, go to M
-            backpatch($8->nextlist, $2->instr);         // Backpatching - go to the beginning of the loop
+            backpatch($4->truelist, $7->instr);         // Go to M2 and loop_statement if expression is true
+            backpatch($8->nextlist, $2->instr);         // Go back to M1 and expression after one iteration of loop_statement
         }
         | DO M statement M WHILE LEFT_PARENTHESIS expression N RIGHT_PARENTHESIS SEMICOLON
         {
@@ -1770,9 +1770,9 @@ iteration_statement:
             $$ = new expression();                  // Create a new expression  
             backpatch($8->nextlist, next_instruction);     // Backpatching 
             convertIntToBool($7);                   // Convert expression to bool
-            backpatch($7->truelist, $2->instr);     // Backpatching - if expression is true, go to M
-            backpatch($3->nextlist, $4->instr);     // Backpatching - go to the beginning of the loop
-            $$->nextlist = $7->falselist;
+            backpatch($7->truelist, $2->instr);     // Go back to M1 and loop_statement if expression is true
+            backpatch($3->nextlist, $4->instr);     // Go to M2 to check expression after statement is complete
+            $$->nextlist = $7->falselist;           // Exit loop if expression is false
         }
         | FOR LEFT_PARENTHESIS expression_statement M expression_statement N M expression N RIGHT_PARENTHESIS M statement
         {
@@ -1780,11 +1780,11 @@ iteration_statement:
             $$ = new expression();                   // Create a new expression
             add_TAC("", "", "", GOTO);
             $12->nextlist = merge($12->nextlist, makelist(next_instruction - 1));
-            backpatch($12->nextlist, $7->instr);    // Backpatching - go to the beginning of the loop
+            backpatch($12->nextlist, $7->instr);    
             backpatch($9->nextlist, $4->instr);     
             backpatch($6->nextlist, next_instruction);     
             convertIntToBool($5);                   // Convert expression to bool
-            backpatch($5->truelist, $11->instr);    // Backpatching - if expression is true, go to M
+            backpatch($5->truelist, $11->instr);    // backpatching
             $$->nextlist = $5->falselist;           // Exit loop if expression is false
         }
         ;
@@ -1831,15 +1831,16 @@ function_definition:
         {}
         | function_prototype compound_statement
         {
-            ST = &ST_global;                     // Reset the ST_entry table to global ST_entry table
+            ST = &ST_global;                     // Reset the symbol table to global symbol table
             add_TAC($1->name, "", "", FUNC_END);
         }
         ;
 
 function_prototype:
+        //function initialiser
         declaration_specifiers declarator
         {
-            data_dtype current_dtype = $1;
+            data_dtype current_dtype = $1;//extract the type of return 
             int current_dsize = -1;
             if(current_dtype == CHAR)
                 current_dsize = 1;
@@ -1847,12 +1848,14 @@ function_prototype:
                 current_dsize = 4;
             if(current_dtype == FLOAT)
                 current_dsize = 8;
+
             declaration* currDec = $2;
             ST_entry* sym = ST_global.search_lexeme(currDec->name);
-            if(currDec->type == FUNCTION) {
+            
+            if(currDec->type == FUNCTION) {//if the type of declarator is function
                 ST_entry* retval = sym->nested_symbol_table->search_lexeme("RETVAL", current_dtype, currDec->pointers);   // Create entry for return value
                 sym->size = 0;
-                sym->initial_value = NULL;
+                sym->initial_value = NULL;//intialize return value as NULL
             }
             $$ = $2;
         }
@@ -1868,10 +1871,5 @@ declaration_list:
 %%
 
 void yyerror(string s) {
-    /*
-        This function prints any error encountered while parsing
-    */
-    cout << "Error occurred: " << s << endl;
-    cout << "Line no.: " << yylineno << endl;
-    cout << "Unable to parse: " << yytext << endl; 
+printf("error in Line: %d ( %s )\n" , yylineno, s.c_str());
 }
