@@ -29,7 +29,7 @@ string asmFileName;
 
 // Prints the global information to the assembly file
 void printGlobal(ofstream& sfile) {
-    for(vector<ST_entry*>::iterator it = ST_global.ST_entrys.begin(); it != ST_global.ST_entrys.end(); it++) {
+    for(vector<ST_entry*>::iterator it = ST_global.list_ST_entry.begin(); it != ST_global.list_ST_entry.end(); it++) {
         ST_entry* sym = *it;
         if(sym->type.type == CHAR && sym->name[0] != 't') {
             if(sym->initial_value != NULL) {
@@ -72,7 +72,7 @@ void printStrings(ofstream& sfile) {
 // Generates labels for different targets of goto statements
 void setLabels() {
     int i = 0;
-    for(vector<quad>::iterator it = TAC_list.quads.begin(); it != TAC_list.quads.end(); it++) {
+    for(vector<quad>::iterator it = TAC_list.TAC_quad_list.begin(); it != TAC_list.TAC_quad_list.end(); it++) {
         if(it->op == GOTO || (it->op >= GOTO_EQ && it->op <= IF_FALSE_GOTO)) {
             int target = atoi((it->result.c_str()));
             if(!labels.count(target)) {
@@ -107,9 +107,9 @@ void quadCode(quad q, ofstream& sfile) {
     ST_entry* location1 = ST->search_lexeme(q.arg1);
     ST_entry* location2 = ST->search_lexeme(q.arg2);
     ST_entry* location3 = ST->search_lexeme(q.result);
-    ST_entry* glb1 = ST_global.searchGlobal(q.arg1);
-    ST_entry* glb2 = ST_global.searchGlobal(q.arg2);
-    ST_entry* glb3 = ST_global.searchGlobal(q.result);
+    ST_entry* glb1 = ST_global.search_global_ST(q.arg1);
+    ST_entry* glb2 = ST_global.search_global_ST(q.arg2);
+    ST_entry* glb3 = ST_global.search_global_ST(q.result);
 
     if(ST != &ST_global) {
         if(glb1 == NULL)
@@ -459,38 +459,38 @@ void generateTargetCode(ofstream& sfile) {
     ST_entry* currFunc = NULL;
     setLabels();
 
-    for(int i = 0; i < (int)TAC_list.quads.size(); i++) {
+    for(int i = 0; i < (int)TAC_list.TAC_quad_list.size(); i++) {
         // Print the quad as a comment in the assembly file
-        sfile << "# " << TAC_list.quads[i].print() << endl;
+        sfile << "# " << TAC_list.TAC_quad_list[i].print_TAC() << endl;
         if(labels.count(i))
             sfile << labels[i] << ":" << endl;
 
         // Necessary tasks for a function
-        if(TAC_list.quads[i].op == FUNC_BEG) {
+        if(TAC_list.TAC_quad_list[i].op == FUNC_BEG) {
             i++;
-            if(TAC_list.quads[i].op != FUNC_END)
+            if(TAC_list.TAC_quad_list[i].op != FUNC_END)
                 i--;
             else
                 continue;
-            currFunc = ST_global.searchGlobal(TAC_list.quads[i].result);
+            currFunc = ST_global.search_global_ST(TAC_list.TAC_quad_list[i].result);
             currFuncTable = currFunc->nested_symbol_table;
             int takingParam = 1, memBind = 16;
             ST = currFuncTable;
-            for(int j = 0; j < (int)currFuncTable->ST_entrys.size(); j++) {
-                if(currFuncTable->ST_entrys[j]->name == "RETVAL") {
+            for(int j = 0; j < (int)currFuncTable->list_ST_entry.size(); j++) {
+                if(currFuncTable->list_ST_entry[j]->name == "RETVAL") {
                     takingParam = 0;
                     memBind = 0;
-                    if(currFuncTable->ST_entrys.size() > j + 1)
-                        memBind = -currFuncTable->ST_entrys[j + 1]->size;
+                    if(currFuncTable->list_ST_entry.size() > j + 1)
+                        memBind = -currFuncTable->list_ST_entry[j + 1]->size;
                 }
                 else {
                     if(!takingParam) {
-                        currFuncTable->ST_entrys[j]->offset = memBind;
-                        if(currFuncTable->ST_entrys.size() > j + 1)
-                            memBind -= currFuncTable->ST_entrys[j + 1]->size;
+                        currFuncTable->list_ST_entry[j]->offset = memBind;
+                        if(currFuncTable->list_ST_entry.size() > j + 1)
+                            memBind -= currFuncTable->list_ST_entry[j + 1]->size;
                     }
                     else {
-                        currFuncTable->ST_entrys[j]->offset = memBind;
+                        currFuncTable->list_ST_entry[j]->offset = memBind;
                         memBind += 8;
                     }
                 }
@@ -499,21 +499,21 @@ void generateTargetCode(ofstream& sfile) {
                 memBind = 0;
             else
                 memBind *= -1;
-            funcRunning = TAC_list.quads[i].result;
+            funcRunning = TAC_list.TAC_quad_list[i].result;
             generatePrologue(memBind, sfile);
         }
 
         // Function epilogue (while leaving a function)
-        else if(TAC_list.quads[i].op == FUNC_END) {
+        else if(TAC_list.TAC_quad_list[i].op == FUNC_END) {
             ST = &ST_global;
             funcRunning = "";
             sfile << "\tleave" << endl;
             sfile << "\tret" << endl;
-            sfile << "\t.size\t" << TAC_list.quads[i].result << ", .-" << TAC_list.quads[i].result << endl;
+            sfile << "\t.size\t" << TAC_list.TAC_quad_list[i].result << ", .-" << TAC_list.TAC_quad_list[i].result << endl;
         }
 
         if(funcRunning != "")
-            quadCode(TAC_list.quads[i], sfile);
+            quadCode(TAC_list.TAC_quad_list[i], sfile);
     }
 }
 
@@ -525,9 +525,9 @@ int main(int argc, char* argv[]) {
     ofstream sfile;
     sfile.open(asmFileName);
 
-    TAC_list.print();               // Print the three address quads
+    TAC_list.print_TAC();               // Print the three address TAC_quad_list
 
-    ST->print("ST.global");         // Print the ST_entry tables
+    ST->print_ST("ST.global");         // Print the ST_entry tables
 
     ST = &ST_global;
 

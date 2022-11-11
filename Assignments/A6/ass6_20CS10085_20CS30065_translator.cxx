@@ -15,25 +15,25 @@ using namespace std;
 int next_instruction = 0;
 
 // Intiailize the static variables
-int symbol_table::tempCount = 0;
+int symbol_table::temporary_var = 0;
 
 quad_TAC_arr TAC_list;
 symbol_table ST_global;
 symbol_table* ST;
 
 
-// Implementations of constructors and functions for the ST_entryValue class
-void ST_entryValue::initialize(int val) {
+// Implementations of constructors and functions for the ST_entry_value class
+void ST_entry_value::initialize(int val) {
     c = f = i = val;
     p = NULL;
 }
 
-void ST_entryValue::initialize(char val) {
+void ST_entry_value::initialize(char val) {
     c = f = i = val;
     p = NULL;
 }
 
-void ST_entryValue::initialize(float val) {
+void ST_entry_value::initialize(float val) {
     c = f = i = val;
     p = NULL;
 }
@@ -64,19 +64,19 @@ ST_entry* symbol_table::search_lexeme(string name, data_dtype t, int pc) {
             sym->type.pointers = pc;
             sym->type.type = ARRAY;
         }
-        ST_entrys.push_back(sym);
+        list_ST_entry.push_back(sym);
         table[name] = sym;
     }
     return table[name];
 }
 
-ST_entry* symbol_table::searchGlobal(string name) {
+ST_entry* symbol_table::search_global_ST(string name) {
     return (table.count(name) ? table[name] : NULL);
 }
 
 string symbol_table::generate_tem_var(data_dtype t) {
     // Create the name for the temporary
-    string tempName = "t" + to_string(symbol_table::tempCount++);
+    string tempName = "t" + to_string(symbol_table::temporary_var++);
     
     // Initialize the required attributes
     ST_entry* sym = new ST_entry();
@@ -87,13 +87,13 @@ string symbol_table::generate_tem_var(data_dtype t) {
     sym->initial_value = NULL;
 
     offset += sym->size;
-    ST_entrys.push_back(sym);
+    list_ST_entry.push_back(sym);
     table[tempName] = sym;  // Add the temporary to the ST_entry table
 
     return tempName;
 }
 
-void symbol_table::print(string tableName) {
+void symbol_table::print_ST(string tableName) {
     for(int i = 0; i < 120; i++) {
         cout << '-';
     }
@@ -118,9 +118,9 @@ void symbol_table::print(string tableName) {
     // For storing nested ST_entry tables
     vector<pair<string, symbol_table*>> tableList;
 
-    // Print the ST_entrys in the ST_entry table
-    for(int i = 0; i < (int)ST_entrys.size(); i++) {
-        ST_entry* sym = ST_entrys[i];
+    // Print the list_ST_entry in the ST_entry table
+    for(int i = 0; i < (int)list_ST_entry.size(); i++) {
+        ST_entry* sym = list_ST_entry[i];
         cout << left << setw(25) << sym->name;
         cout << left << setw(25) << checkType(sym->type);
         cout << left << setw(20) << getInitVal(sym);
@@ -144,7 +144,7 @@ void symbol_table::print(string tableName) {
     // Recursively call the print function for the nested ST_entry tables
     for(vector<pair<string, symbol_table*>>::iterator it = tableList.begin(); it != tableList.end(); it++) {
         pair<string, symbol_table*> p = (*it);
-        p.second->print(p.first);
+        p.second->print_ST(p.first);
     }
 
 }
@@ -153,7 +153,7 @@ void symbol_table::print(string tableName) {
 // Implementations of constructors and functions for the quad class
 quad::quad(string res_, string arg1_, string arg2_, opcode op_): op(op_), arg1(arg1_), arg2(arg2_), result(res_) {}
 
-string quad::print() {
+string quad::print_TAC() {
     string out = "";
     if(op >= ADD && op <= BW_XOR) {                 // Binary operators
         out += (result + " = " + arg1 + " ");
@@ -240,7 +240,7 @@ string quad::print() {
 
 
 // Implementations of constructors and functions for the quad_TAC_arr class
-void quad_TAC_arr::print() {
+void quad_TAC_arr::print_TAC() {
     for(int i = 0; i < 120; i++)
         cout << '-';
     cout << endl;
@@ -249,46 +249,46 @@ void quad_TAC_arr::print() {
         cout << '-';
     cout << endl;
 
-    // Print each of the quads one by one
-    for(int i = 0; i < (int)quads.size(); i++) {
-        if(quads[i].op != FUNC_BEG && quads[i].op != FUNC_END)
+    // Print each of the TAC_quad_list one by one
+    for(int i = 0; i < (int)TAC_quad_list.size(); i++) {
+        if(TAC_quad_list[i].op != FUNC_BEG && TAC_quad_list[i].op != FUNC_END)
             cout << left << setw(4) << i << ":    ";
-        else if(quads[i].op == FUNC_BEG)
+        else if(TAC_quad_list[i].op == FUNC_BEG)
             cout << endl << left << setw(4) << i << ": ";
-        else if(quads[i].op == FUNC_END)
+        else if(TAC_quad_list[i].op == FUNC_END)
             cout << left << setw(4) << i << ": ";
-        cout << quads[i].print() << endl;
+        cout << TAC_quad_list[i].print_TAC() << endl;
     }
     cout << endl;
 }
 
 
 // Implementations of constructors and functions for the expression class
-expression::expression(): fold(0), folder(NULL) {}
+expression::expression(): order_dim(0), store_addr(NULL) {}
 
 
 // Overloaded add_TAC functions
 void add_TAC(string result, string arg1, string arg2, opcode op) {
     quad q(result, arg1, arg2, op);
-    TAC_list.quads.push_back(q);
+    TAC_list.TAC_quad_list.push_back(q);
     next_instruction++;
 }
 
 void add_TAC(string result, int constant, opcode op) {
     quad q(result, to_string(constant), "", op);
-    TAC_list.quads.push_back(q);
+    TAC_list.TAC_quad_list.push_back(q);
     next_instruction++;
 }
 
 void add_TAC(string result, char constant, opcode op) {
     quad q(result, to_string(constant), "", op);
-    TAC_list.quads.push_back(q);
+    TAC_list.TAC_quad_list.push_back(q);
     next_instruction++;
 }
 
 void add_TAC(string result, float constant, opcode op) {
     quad q(result, to_string(constant), "", op);
-    TAC_list.quads.push_back(q);
+    TAC_list.TAC_quad_list.push_back(q);
     next_instruction++;
 }
 
@@ -309,7 +309,7 @@ list<int> merge(list<int> list1, list<int> list2) {
 void backpatch(list<int> l, int address) {
     string str = to_string(address);
     for(list<int>::iterator it = l.begin(); it != l.end(); it++) {
-        TAC_list.quads[*it].result = str;
+        TAC_list.TAC_quad_list[*it].result = str;
     }
 }
 

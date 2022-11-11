@@ -38,36 +38,36 @@ test: tinyC libass6_20CS10085_20CS30065.a
 	@mkdir -p bin
 	
 	@echo "\nRunning Test 2\n"
-	./tinyC 2 < test-inputs/ass6_20CS10085_20CS30065_test2.c > test-outputs/ass6_20CS10085_20CS30065_quads2.out
+	./tinyC 2 < test-inputs/ass6_20CS10085_20CS30065_test2.c > test-outputs/ass6_20CS10085_20CS30065_TAC_quad_list2.out
 	mv ass6_20CS10085_20CS30065_2.s test-outputs/ass6_20CS10085_20CS30065_2.s
 	gcc -c test-outputs/ass6_20CS10085_20CS30065_2.s -o test-outputs/ass6_20CS10085_20CS30065_2.o
 	gcc test-outputs/ass6_20CS10085_20CS30065_2.o -o bin/test2 -L. -lass6_20CS10085_20CS30065 -no-pie
 
 	@echo "\nRunning Test 3\n"
-	./tinyC 3 < test-inputs/ass6_20CS10085_20CS30065_test3.c > test-outputs/ass6_20CS10085_20CS30065_quads3.out
+	./tinyC 3 < test-inputs/ass6_20CS10085_20CS30065_test3.c > test-outputs/ass6_20CS10085_20CS30065_TAC_quad_list3.out
 	mv ass6_20CS10085_20CS30065_3.s test-outputs/ass6_20CS10085_20CS30065_3.s
 	gcc -c test-outputs/ass6_20CS10085_20CS30065_3.s -o test-outputs/ass6_20CS10085_20CS30065_3.o
 	gcc test-outputs/ass6_20CS10085_20CS30065_3.o -o bin/test3 -L. -lass6_20CS10085_20CS30065 -no-pie
 
 	@echo "\nRunning Test 4\n"
-	./tinyC 4 < test-inputs/ass6_20CS10085_20CS30065_test4.c > test-outputs/ass6_20CS10085_20CS30065_quads4.out
+	./tinyC 4 < test-inputs/ass6_20CS10085_20CS30065_test4.c > test-outputs/ass6_20CS10085_20CS30065_TAC_quad_list4.out
 	mv ass6_20CS10085_20CS30065_4.s test-outputs/ass6_20CS10085_20CS30065_4.s
 	gcc -c test-outputs/ass6_20CS10085_20CS30065_4.s -o test-outputs/ass6_20CS10085_20CS30065_4.o
 	gcc test-outputs/ass6_20CS10085_20CS30065_4.o -o bin/test4 -L. -lass6_20CS10085_20CS30065 -no-pie
 
 	@echo "\nRunning Test 5\n"
-	./tinyC 5 < test-inputs/ass6_20CS10085_20CS30065_test5.c > test-outputs/ass6_20CS10085_20CS30065_quads5.out
+	./tinyC 5 < test-inputs/ass6_20CS10085_20CS30065_test5.c > test-outputs/ass6_20CS10085_20CS30065_TAC_quad_list5.out
 	mv ass6_20CS10085_20CS30065_5.s test-outputs/ass6_20CS10085_20CS30065_5.s
 	gcc -c test-outputs/ass6_20CS10085_20CS30065_5.s -o test-outputs/ass6_20CS10085_20CS30065_5.o
 	gcc test-outputs/ass6_20CS10085_20CS30065_5.o -o bin/test5 -L. -lass6_20CS10085_20CS30065 -no-pie
 
 	@echo "\nRunning Test 6\n"
-	./tinyC 6 < test-inputs/ass6_20CS10085_20CS30065_test6.c > test-outputs/ass6_20CS10085_20CS30065_quads6.out
+	./tinyC 6 < test-inputs/ass6_20CS10085_20CS30065_test6.c > test-outputs/ass6_20CS10085_20CS30065_TAC_quad_list6.out
 	mv ass6_20CS10085_20CS30065_6.s test-outputs/ass6_20CS10085_20CS30065_6.s
 	gcc -c test-outputs/ass6_20CS10085_20CS30065_6.s -o test-outputs/ass6_20CS10085_20CS30065_6.o
 	gcc test-outputs/ass6_20CS10085_20CS30065_6.o -o bin/test6 -L. -lass6_20CS10085_20CS30065 -no-pie
 
-	@echo "\nThe three address quads, assembly files and object files are in test-outputs/\n"
+	@echo "\nThe three address TAC_quad_list, assembly files and object files are in test-outputs/\n"
 	@echo "The binaries for the test files are in bin/\n"
 
 clean:

@@ -140,7 +140,7 @@ primary_expression:
             $$ = new expression();                  // new expression node
             $$->location = ST->generate_tem_var(INT);             // create a temporary variable to store the value
             add_TAC($$->location, $1, ASSIGN);          //create a TAC quad to assign the value of constant to temporary variable
-            ST_entryValue* val = new ST_entryValue();
+            ST_entry_value* val = new ST_entry_value();
             val->initialize($1);                        // intialise 
             ST->search_lexeme($$->location)->initial_value = val;     // update the intial value of temporary variable
         }
@@ -149,7 +149,7 @@ primary_expression:
             $$ = new expression();                  // new expression node
             $$->location = ST->generate_tem_var(FLOAT);           //create a temporary variable to store the value
             add_TAC($$->location, $1, ASSIGN);          //create a TAC quad to assign the value of constant to temporary variable
-            ST_entryValue* val = new ST_entryValue();
+            ST_entry_value* val = new ST_entry_value();
             val->initialize($1);                    // // intialise 
             ST->search_lexeme($$->location)->initial_value = val;      // update the intial value of temporary variable
         }
@@ -158,7 +158,7 @@ primary_expression:
             $$ = new expression();                  // new expression node
             $$->location = ST->generate_tem_var(CHAR);            //create a temporary variable to store the value
             add_TAC($$->location, $1, ASSIGN);  //create a TAC quad to assign the value of constant to temporary variable
-            ST_entryValue* val = new ST_entryValue();
+            ST_entry_value* val = new ST_entry_value();
             val->initialize($1);                    // intialise 
             ST->search_lexeme($$->location)->initial_value = val;      // update the intial value of temporary variable
         }
@@ -183,10 +183,10 @@ postfix_expression:
             //to compute address of array
             ST_entry_type to = ST->search_lexeme($1->location)->type;      // extract the type of variable
             string f = "";
-            if(!($1->fold)) {
+            if(!($1->order_dim)) {
                 f = ST->generate_tem_var(INT);                       // Generate a new temporary variable
                 add_TAC(f, 0, ASSIGN);
-                $1->folder = new string(f);
+                $1->store_addr = new string(f);
             }
             string temp = ST->generate_tem_var(INT);
 
@@ -210,7 +210,7 @@ postfix_expression:
             //function call with the function name and parameter list
             symbol_table* function_ST = ST_global.search_lexeme($1->location)->nested_symbol_table;
             vector<param*> parameters = *($3);                                      // Get the list of parameters
-            vector<ST_entry*> paramsList = function_ST->ST_entrys;
+            vector<ST_entry*> paramsList = function_ST->list_ST_entry;
 
             for(int i = 0; i < (int)parameters.size(); i++) {
                 add_TAC(parameters[i]->name, "", "", PARAM);                        //create a tac for each of the parameter
@@ -243,11 +243,11 @@ postfix_expression:
                 //ARR_L is like a[i] = b            
 
                 $$->location = ST->generate_tem_var(ST->search_lexeme($1->location)->type.next_elem_type);
-                add_TAC($$->location, $1->location, *($1->folder), ARR_R); //assign the old value of $$
+                add_TAC($$->location, $1->location, *($1->store_addr), ARR_R); //assign the old value of $$
                 string temp = ST->generate_tem_var(t.next_elem_type);
-                add_TAC(temp, $1->location, *($1->folder), ARR_R);  //t = a[i]
+                add_TAC(temp, $1->location, *($1->store_addr), ARR_R);  //t = a[i]
                 add_TAC(temp, temp, "1", ADD);                      //t = t+1;
-                add_TAC($1->location, temp, *($1->folder), ARR_L);  //a[i] = t
+                add_TAC($1->location, temp, *($1->store_addr), ARR_L);  //a[i] = t
             }
             else {
                 $$->location = ST->generate_tem_var(ST->search_lexeme($1->location)->type.type);
@@ -266,10 +266,10 @@ postfix_expression:
             if(t.type == ARRAY) {
                 $$->location = ST->generate_tem_var(ST->search_lexeme($1->location)->type.next_elem_type);
                 string temp = ST->generate_tem_var(t.next_elem_type);
-                add_TAC(temp, $1->location, *($1->folder), ARR_R);
+                add_TAC(temp, $1->location, *($1->store_addr), ARR_R);
                 add_TAC($$->location, temp, "", ASSIGN);
                 add_TAC(temp, temp, "1", SUB);
-                add_TAC($1->location, temp, *($1->folder), ARR_L);
+                add_TAC($1->location, temp, *($1->store_addr), ARR_L);
             }
             else {
                 $$->location = ST->generate_tem_var(ST->search_lexeme($1->location)->type.type);
@@ -312,9 +312,9 @@ unary_expression:
             ST_entry_type type = ST->search_lexeme($2->location)->type;
             if(type.type == ARRAY) {
                 string t = ST->generate_tem_var(type.next_elem_type);
-                add_TAC(t, $2->location, *($2->folder), ARR_R); //t = a[i]
+                add_TAC(t, $2->location, *($2->store_addr), ARR_R); //t = a[i]
                 add_TAC(t, t, "1", ADD);                        //t = t+1
-                add_TAC($2->location, t, *($2->folder), ARR_L); //a[i] = t
+                add_TAC($2->location, t, *($2->store_addr), ARR_L); //a[i] = t
                 $$->location = ST->generate_tem_var(ST->search_lexeme($2->location)->type.next_elem_type);
             }
             else {
@@ -330,9 +330,9 @@ unary_expression:
             ST_entry_type type = ST->search_lexeme($2->location)->type;
             if(type.type == ARRAY) {
                 string t = ST->generate_tem_var(type.next_elem_type);
-                add_TAC(t, $2->location, *($2->folder), ARR_R);
+                add_TAC(t, $2->location, *($2->store_addr), ARR_R);
                 add_TAC(t, t, "1", SUB);
-                add_TAC($2->location, t, *($2->folder), ARR_L);
+                add_TAC($2->location, t, *($2->store_addr), ARR_L);
                 $$->location = ST->generate_tem_var(ST->search_lexeme($2->location)->type.next_elem_type);
             }
             else {
@@ -354,8 +354,8 @@ unary_expression:
                 case '*':   // De-referencing
                     $$ = new expression();
                     $$->location = ST->generate_tem_var(INT);                       // Generate temporary of the same data type
-                    $$->fold = 1;                                                   //fold keeps a track of dimension
-                    $$->folder = new string($2->location);                          //folder keeps a track of expression address whose address is provided
+                    $$->order_dim = 1;                                                   //order_dim keeps a track of dimension
+                    $$->store_addr = new string($2->location);                          //store_addr keeps a track of expression address whose address is provided
                     add_TAC($$->location, $2->location, "", DEREFERENCE);           // generate TAC quad a = *n
                     break;
                 case '-':   // Unary minus
@@ -443,8 +443,8 @@ multiplicative_expression:
                 
                 // Generate new temporary variable to store the value of array at the index
                 string t = ST->generate_tem_var(tp.next_elem_type);                // Generate a temporary
-                if($1->folder != NULL) {
-                    add_TAC(t, $1->location, *($1->folder), ARR_R);   
+                if($1->store_addr != NULL) {
+                    add_TAC(t, $1->location, *($1->store_addr), ARR_R);   
                     $1->location = t;                                 
                     $1->type = tp.next_elem_type; 
                     $$ = $1;
@@ -467,7 +467,7 @@ multiplicative_expression:
             //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed
                 
                 string t = ST->generate_tem_var(second_operand->type.next_elem_type);
-                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                add_TAC(t, $3->location, *($3->store_addr), ARR_R);
                 $3->location = t;
                 $3->type = second_operand->type.next_elem_type;
             }
@@ -475,7 +475,7 @@ multiplicative_expression:
 
                 //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed
                 string t = ST->generate_tem_var(first_operand->type.next_elem_type);
-                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                add_TAC(t, $1->location, *($1->store_addr), ARR_R);
                 $1->location = t;
                 $1->type = first_operand->type.next_elem_type;            //next_elem_type keeps the type of elements pointer by pointer or array
             }
@@ -497,7 +497,7 @@ multiplicative_expression:
                 //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed
                 
                 string t = ST->generate_tem_var(second_operand->type.next_elem_type);
-                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                add_TAC(t, $3->location, *($3->store_addr), ARR_R);
                 $3->location = t;
                 $3->type = second_operand->type.next_elem_type;
             }
@@ -505,7 +505,7 @@ multiplicative_expression:
 
                 //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed
                 string t = ST->generate_tem_var(first_operand->type.next_elem_type);
-                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                add_TAC(t, $1->location, *($1->store_addr), ARR_R);
                 $1->location = t;
                 $1->type = first_operand->type.next_elem_type;
             }
@@ -527,7 +527,7 @@ multiplicative_expression:
                 //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed
                 
                 string t = ST->generate_tem_var(second_operand->type.next_elem_type);
-                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                add_TAC(t, $3->location, *($3->store_addr), ARR_R);
                 $3->location = t;
                 $3->type = second_operand->type.next_elem_type;
             }
@@ -536,7 +536,7 @@ multiplicative_expression:
                 
                 //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed
                 string t = ST->generate_tem_var(first_operand->type.next_elem_type);
-                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                add_TAC(t, $1->location, *($1->store_addr), ARR_R);
                 $1->location = t;
                 $1->type = first_operand->type.next_elem_type;
             }
@@ -563,7 +563,7 @@ additive_expression:
                 //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed
                 
                 string t = ST->generate_tem_var(second_operand->type.next_elem_type);
-                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                add_TAC(t, $3->location, *($3->store_addr), ARR_R);
                 $3->location = t;
                 $3->type = second_operand->type.next_elem_type;
             }
@@ -571,7 +571,7 @@ additive_expression:
                 
                 //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed
                 string t = ST->generate_tem_var(first_operand->type.next_elem_type);
-                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                add_TAC(t, $1->location, *($1->store_addr), ARR_R);
                 $1->location = t;
                 $1->type = first_operand->type.next_elem_type;
             }
@@ -592,7 +592,7 @@ additive_expression:
                 //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed
                 
                 string t = ST->generate_tem_var(second_operand->type.next_elem_type);
-                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                add_TAC(t, $3->location, *($3->store_addr), ARR_R);
                 $3->location = t;
                 $3->type = second_operand->type.next_elem_type;
             }
@@ -600,7 +600,7 @@ additive_expression:
                 
                 //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
                 string t = ST->generate_tem_var(first_operand->type.next_elem_type);
-                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                add_TAC(t, $1->location, *($1->store_addr), ARR_R);
                 $1->location = t;
                 $1->type = first_operand->type.next_elem_type;
             }
@@ -626,7 +626,7 @@ shift_expression:
                    //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
                 
                 string t = ST->generate_tem_var(second_operand->type.next_elem_type);
-                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                add_TAC(t, $3->location, *($3->store_addr), ARR_R);
                 $3->location = t;
                 $3->type = second_operand->type.next_elem_type;
             }
@@ -634,7 +634,7 @@ shift_expression:
 
                    //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
                 string t = ST->generate_tem_var(first_operand->type.next_elem_type);
-                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                add_TAC(t, $1->location, *($1->store_addr), ARR_R);
                 $1->location = t;
                 $1->type = first_operand->type.next_elem_type;
             }
@@ -653,7 +653,7 @@ shift_expression:
                    //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
                 
                 string t = ST->generate_tem_var(second_operand->type.next_elem_type);
-                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                add_TAC(t, $3->location, *($3->store_addr), ARR_R);
                 $3->location = t;
                 $3->type = second_operand->type.next_elem_type;
             }
@@ -661,7 +661,7 @@ shift_expression:
                 
                    //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
                 string t = ST->generate_tem_var(first_operand->type.next_elem_type);
-                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                add_TAC(t, $1->location, *($1->store_addr), ARR_R);
                 $1->location = t;
                 $1->type = first_operand->type.next_elem_type;
             }
@@ -688,7 +688,7 @@ relational_expression:
                 //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
                 
                 string t = ST->generate_tem_var(second_operand->type.next_elem_type);
-                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                add_TAC(t, $3->location, *($3->store_addr), ARR_R);
                 $3->location = t;
                 $3->type = second_operand->type.next_elem_type;
             }
@@ -697,7 +697,7 @@ relational_expression:
                 
                    //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
                 string t = ST->generate_tem_var(first_operand->type.next_elem_type);
-                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                add_TAC(t, $1->location, *($1->store_addr), ARR_R);
                 $1->location = t;
                 $1->type = first_operand->type.next_elem_type;
             }
@@ -729,7 +729,7 @@ relational_expression:
                 
                 //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed
                 string t = ST->generate_tem_var(second_operand->type.next_elem_type);
-                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                add_TAC(t, $3->location, *($3->store_addr), ARR_R);
                 $3->location = t;
                 $3->type = second_operand->type.next_elem_type;
             }
@@ -737,7 +737,7 @@ relational_expression:
                 
                 //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed
                 string t = ST->generate_tem_var(first_operand->type.next_elem_type);
-                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                add_TAC(t, $1->location, *($1->store_addr), ARR_R);
                 $1->location = t;
                 $1->type = first_operand->type.next_elem_type;
             }
@@ -767,7 +767,7 @@ relational_expression:
                 
                 //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
                 string t = ST->generate_tem_var(second_operand->type.next_elem_type);
-                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                add_TAC(t, $3->location, *($3->store_addr), ARR_R);
                 $3->location = t;
                 $3->type = second_operand->type.next_elem_type;
             }
@@ -775,7 +775,7 @@ relational_expression:
                 
                 //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
                 string t = ST->generate_tem_var(first_operand->type.next_elem_type);
-                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                add_TAC(t, $1->location, *($1->store_addr), ARR_R);
                 $1->location = t;
                 $1->type = first_operand->type.next_elem_type;
             }
@@ -806,7 +806,7 @@ relational_expression:
                 
                 //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
                 string t = ST->generate_tem_var(second_operand->type.next_elem_type);
-                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                add_TAC(t, $3->location, *($3->store_addr), ARR_R);
                 $3->location = t;
                 $3->type = second_operand->type.next_elem_type;
             }
@@ -814,7 +814,7 @@ relational_expression:
                 
                 //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
                 string t = ST->generate_tem_var(first_operand->type.next_elem_type);
-                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                add_TAC(t, $1->location, *($1->store_addr), ARR_R);
                 $1->location = t;
                 $1->type = first_operand->type.next_elem_type;
             }
@@ -852,7 +852,7 @@ equality_expression:
                 
                 //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
                 string t = ST->generate_tem_var(second_operand->type.next_elem_type);
-                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                add_TAC(t, $3->location, *($3->store_addr), ARR_R);
                 $3->location = t;
                 $3->type = second_operand->type.next_elem_type;
             }
@@ -860,7 +860,7 @@ equality_expression:
                 
                 //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
                 string t = ST->generate_tem_var(first_operand->type.next_elem_type);
-                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                add_TAC(t, $1->location, *($1->store_addr), ARR_R);
                 $1->location = t;
                 $1->type = first_operand->type.next_elem_type;
             }
@@ -890,7 +890,7 @@ equality_expression:
                 
                 //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
                 string t = ST->generate_tem_var(second_operand->type.next_elem_type);
-                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                add_TAC(t, $3->location, *($3->store_addr), ARR_R);
                 $3->location = t;
                 $3->type = second_operand->type.next_elem_type;
             }
@@ -898,7 +898,7 @@ equality_expression:
                 
                 //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
                 string t = ST->generate_tem_var(first_operand->type.next_elem_type);
-                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                add_TAC(t, $1->location, *($1->store_addr), ARR_R);
                 $1->location = t;
                 $1->type = first_operand->type.next_elem_type;
             }
@@ -938,7 +938,7 @@ and_expression:
                 
                 //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
                 string t = ST->generate_tem_var(second_operand->type.next_elem_type);
-                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                add_TAC(t, $3->location, *($3->store_addr), ARR_R);
                 $3->location = t;
                 $3->type = second_operand->type.next_elem_type;
             }
@@ -946,7 +946,7 @@ and_expression:
                 
                 //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
                 string t = ST->generate_tem_var(first_operand->type.next_elem_type);
-                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                add_TAC(t, $1->location, *($1->store_addr), ARR_R);
                 $1->location = t;
                 $1->type = first_operand->type.next_elem_type;
             }
@@ -971,7 +971,7 @@ exclusive_or_expression:
                 
                 //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
                 string t = ST->generate_tem_var(second_operand->type.next_elem_type);
-                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                add_TAC(t, $3->location, *($3->store_addr), ARR_R);
                 $3->location = t;
                 $3->type = second_operand->type.next_elem_type;
             }
@@ -979,7 +979,7 @@ exclusive_or_expression:
                 
                 //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
                 string t = ST->generate_tem_var(first_operand->type.next_elem_type);
-                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                add_TAC(t, $1->location, *($1->store_addr), ARR_R);
                 $1->location = t;
                 $1->type = first_operand->type.next_elem_type;
             }
@@ -1005,7 +1005,7 @@ inclusive_or_expression:
                 
                 //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
                 string t = ST->generate_tem_var(second_operand->type.next_elem_type);
-                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                add_TAC(t, $3->location, *($3->store_addr), ARR_R);
                 $3->location = t;
                 $3->type = second_operand->type.next_elem_type;
             }
@@ -1013,7 +1013,7 @@ inclusive_or_expression:
                 
                 //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
                 string t = ST->generate_tem_var(first_operand->type.next_elem_type);
-                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                add_TAC(t, $1->location, *($1->store_addr), ARR_R);
                 $1->location = t;
                 $1->type = first_operand->type.next_elem_type;
             }
@@ -1140,14 +1140,14 @@ assignment_expression:
         {
             ST_entry* sym1 = ST->search_lexeme($1->location);         // Get the first operand from the ST_entry table
             ST_entry* sym2 = ST->search_lexeme($3->location);         // Get the second operand from the ST_entry table
-            if($1->fold == 0) {
+            if($1->order_dim == 0) {
                 if(sym1->type.type != ARRAY)
                     add_TAC($1->location, $3->location, "", ASSIGN);
                 else
-                    add_TAC($1->location, $3->location, *($1->folder), ARR_L);
+                    add_TAC($1->location, $3->location, *($1->store_addr), ARR_L);
             }
             else
-                add_TAC(*($1->folder), $3->location, "", L_DEREF);
+                add_TAC(*($1->store_addr), $3->location, "", L_DEREF);
             $$ = $1;        // Assignment 
         }
         ;
@@ -1195,58 +1195,78 @@ constant_expression:
 declaration: 
         declaration_specifiers init_declarator_list SEMICOLON
         {
-            data_dtype currType = $1;
-            int currSize = -1;
-            // Assign correct size for the data type
-            if(currType == INT)
-                currSize = 4;
-            else if(currType == CHAR)
-                currSize = 1;
-            else if(currType == FLOAT)
-                currSize = 8;
+            data_dtype current_dtype = $1;
+            int current_dsize = -1;
+
+            // assign size according to the datatype
+            if(current_dtype == INT)
+                current_dsize = 4;
+            else if(current_dtype == CHAR)
+                current_dsize = 1;
+            else if(current_dtype == FLOAT)
+                current_dsize = 8;
+           
+            //get the set of declarations
             vector<declaration*> decs = *($2);
+            
+            //iterate over declarations
             for(vector<declaration*>::iterator it = decs.begin(); it != decs.end(); it++) {
                 declaration* currDec = *it;
+                
+                //if a function declaration is found
                 if(currDec->type == FUNCTION) {
+                    //move back to gloabl symbol table
                     ST = &ST_global;
+                    //add a TAC code marking the end of function
                     add_TAC(currDec->name, "", "", FUNC_END);
+                    
+                    //find the func in the global symbol table
                     ST_entry* first_operand = ST->search_lexeme(currDec->name);        // Create an entry for the function
-                    ST_entry* second_operand = first_operand->nested_symbol_table->search_lexeme("RETVAL", currType, currDec->pointers);
+
+                    //find the lexeme with name return value in nested table of the entry corresponding to func name
+                    //i.e. search for return lexeme in function symbol table
+                    ST_entry* second_operand = first_operand->nested_symbol_table->search_lexeme("RETVAL", current_dtype, currDec->pointers);
+                    
+                    //update func symbol's attributes in global symbol table
                     first_operand->size = 0;
                     first_operand->initial_value = NULL;
                     continue;
                 }
 
-                ST_entry* three = ST->search_lexeme(currDec->name, currType);        // Create an entry for the variable in the ST_entry table
-                three->nested_symbol_table = NULL;
+                //if the current declaration is not of type function
+                ST_entry* three = ST->search_lexeme(currDec->name, current_dtype);        // create a new symbol
+                three->nested_symbol_table = NULL;                                         //since this is not a function there won't be nested tables
+                
                 if(currDec->li == vector<int>() && currDec->pointers == 0) {
-                    three->type.type = currType;
-                    three->size = currSize;
-                    if(currDec->initial_value != NULL) {
+                    three->type.type = current_dtype;                                       //assign the data type to all variables
+                    three->size = current_dsize;                                            //assign data type's size to all variables
+                    
+                    if(currDec->initial_value != NULL) {                                    //if it has an initial value
                         string rval = currDec->initial_value->location;
                         add_TAC(three->name, rval, "", ASSIGN);
-                        three->initial_value = ST->search_lexeme(rval)->initial_value;
+                        three->initial_value = ST->search_lexeme(rval)->initial_value;      //assign the intial value to this variable
                     }
                     else
-                        three->initial_value = NULL;
-                }
-                else if(currDec->li != vector<int>()) {         // Handle array dtype
-                    three->type.type = ARRAY;
-                    three->type.next_elem_type = currType;
-                    three->type.dims = currDec->li;
-                    vector<int> temp = three->type.dims;
-                    int sz = currSize;
-                    for(int i = 0; i < (int)temp.size(); i++)
-                        sz *= temp[i];
-                    ST->offset += sz;
-                    three->size = sz;
+                        three->initial_value = NULL;                                        //else assign null as initial value     
+                }       
+                else if(currDec->li != vector<int>()) {                                     // Handle array data type
+                    three->type.type = ARRAY;                                               //set type as arary
+                    three->type.next_elem_type = current_dtype;                             //array elements would of type current data type
+                    three->type.dims = currDec->li;                                         //set the dimension of array
+                    vector<int> temp = three->type.dims;                                    //if the array is of type ar[3][4][5] then 3,4,5 would be stored in the vector
+
+                    int size = current_dsize;
+                    for(int i = 0; i < (int)temp.size(); i++)                                //temp holds the value of dimensions
+                        size *= temp[i];
+                    ST->offset += size;                                                      //multiply the dimension to find total number of bytes occupied by array
+                    three->size = size;
                     ST->offset -= 4;
                 }
-                else if(currDec->pointers != 0) {               // Handle pointer dtype
-                    three->type.type = POINTER;
-                    three->type.next_elem_type = currType;
-                    three->type.pointers = currDec->pointers;
-                    ST->offset += (8 - currSize);
+                else if(currDec->pointers != 0) {                                           //to handle pointer data type
+                    three->type.type = POINTER;                                             //set data type of the variable
+                    three->type.next_elem_type = current_dtype;                             //set the data type of the element pointed by the pointer
+                    three->type.pointers = currDec->pointers;                               
+                    ST->offset += (8 - current_dsize);                                      //update the offset but since pointer is of size 8 add that to the offset. 
                     three->size = 8;
                 }
             }
@@ -1277,12 +1297,12 @@ declaration_specifiers:
 init_declarator_list: 
         init_declarator
         {
-            $$ = new vector<declaration*>;      // Create a vector of declarations and add $1 to it
+            $$ = new vector<declaration*>;      // add all declarations to the vector
             $$->push_back($1);
         }
         | init_declarator_list COMMA init_declarator
         {
-            $1->push_back($3);                  // Add $3 to the vector of declarations
+            $1->push_back($3);                  // continue adding declaration to the vector
             $$ = $1;
         }
         ;
@@ -1291,7 +1311,7 @@ init_declarator:
         declarator
         {
             $$ = $1;
-            $$->initial_value = NULL;         // Initialize the initial_value to NULL as no initialization is dfirst_operand
+            $$->initial_value = NULL;         // Initialize the initial_value to NULL as no initiali value given
         }
         | declarator ASSIGN_ initializer
         {   
@@ -1798,18 +1818,18 @@ function_definition:
 function_prototype:
         declaration_specifiers declarator
         {
-            data_dtype currType = $1;
-            int currSize = -1;
-            if(currType == CHAR)
-                currSize = 1;
-            if(currType == INT)
-                currSize = 4;
-            if(currType == FLOAT)
-                currSize = 8;
+            data_dtype current_dtype = $1;
+            int current_dsize = -1;
+            if(current_dtype == CHAR)
+                current_dsize = 1;
+            if(current_dtype == INT)
+                current_dsize = 4;
+            if(current_dtype == FLOAT)
+                current_dsize = 8;
             declaration* currDec = $2;
             ST_entry* sym = ST_global.search_lexeme(currDec->name);
             if(currDec->type == FUNCTION) {
-                ST_entry* retval = sym->nested_symbol_table->search_lexeme("RETVAL", currType, currDec->pointers);   // Create entry for return value
+                ST_entry* retval = sym->nested_symbol_table->search_lexeme("RETVAL", current_dtype, currDec->pointers);   // Create entry for return value
                 sym->size = 0;
                 sym->initial_value = NULL;
             }
