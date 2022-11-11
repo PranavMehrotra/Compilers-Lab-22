@@ -1033,13 +1033,13 @@ logical_and_expression:
                 augmented the grammar with the non-terminal M marker to have a track of next instruction to be executed during backpatching
             */
             backpatch($1->truelist, $3->instr);                     // Backpatching
-            $$->falselist = merge($1->falselist, $4->falselist);    // Generate falselist by merging the falselists of $1 and $4
+            $$->falselist = merge_list($1->falselist, $4->falselist);    // Generate falselist by merging the falselists of $1 and $4
             $$->truelist = $4->truelist;                            // Generate truelist from truelist of $4
             $$->type = BOOL;                                        // Set the type of the expression to boolean
             // B-> B1 && MB2
             // B.truelist = B2.truelist
             // backpatch(B1.truelist, M.instr)
-            //B.falselist = merge(B1.falselist, B2.falselist)
+            //B.falselist = merge_list(B1.falselist, B2.falselist)
         
         
         }
@@ -1051,13 +1051,13 @@ logical_or_expression:
         | logical_or_expression LOGICAL_OR M logical_and_expression
         {
             backpatch($1->falselist, $3->instr);                    // Backpatching
-            $$->truelist = merge($1->truelist, $4->truelist);       // Generate falselist by merging the falselists of $1 and $4
+            $$->truelist = merge_list($1->truelist, $4->truelist);       // Generate falselist by merging the falselists of $1 and $4
             $$->falselist = $4->falselist;                          // Generate truelist from truelist of $4
             $$->type = BOOL;                                        // Set the type of the expression to boolean
             // B-> B1 || MB2
             // B.falselist = B2.falselist
             // backpatch(B1.falselist, M.instr)
-            //B.truelist = merge(B1.truelist, B2.truelist)
+            //B.truelist = merge_list(B1.truelist, B2.truelist)
         
         }
         ;
@@ -1083,11 +1083,11 @@ conditional_expression:
             backpatch($6->nextlist, next_instruction);         
             
             add_TAC($$->location, $5->location, "", ASSIGN);
-            temp = merge(temp, makelist(next_instruction));
+            temp = merge_list(temp, makelist(next_instruction));
             
             add_TAC("", "", "", GOTO);                     
             backpatch($2->nextlist, next_instruction);     
-            convertIntToBool($1);                       
+            convert_int_bool($1);                       
             backpatch($1->truelist, $4->instr);         
             backpatch($1->falselist, $8->instr);        
             backpatch($2->nextlist, next_instruction);  
@@ -1101,7 +1101,7 @@ conditional_expression:
             add_TAC(goto .... );
             backpatch(N 2 .nextlist, nextinstr);
             add_TAC(E .loc ’=’ E 2 .loc);
-            l = merge(l, makelist(nextinstr));
+            l = merge_list(l, makelist(nextinstr));
             add_TAC(goto .... );                   
             backpatch(N1 .nextlist, nextinstr);
             convInt2Bool(E1);
@@ -1703,14 +1703,14 @@ Marker M to keep track of next isntruction and N to keep track of nextlist
 
 S -> if (B) M S1 N
 backpatch(B.truelist, M.instr )
-temp = merge(S1.nextlist, N.nextlist)
-S.nextlist = merge(B.falselist,temp)
+temp = merge_list(S1.nextlist, N.nextlist)
+S.nextlist = merge_list(B.falselist,temp)
 
 S -> if (B) M1 S1 N else M2 S2
 backpatch(B.truelist, M1.instr)
 backpatch(B.falselist, M2.instr)
-temp = merge(S1.nextlist, N.nextlist)
-S.nextlist = merge(temp, S2 .nextlist)
+temp = merge_list(S1.nextlist, N.nextlist)
+S.nextlist = merge_list(temp, S2 .nextlist)
 
 */
 
@@ -1720,13 +1720,13 @@ S.nextlist = merge(temp, S2 .nextlist)
                 M and N markers help in backpatching
             */
             backpatch($4->nextlist, next_instruction);         //backpatching
-            convertIntToBool($3);                       // Convert expression to bool
+            convert_int_bool($3);                       // Convert expression to bool
             backpatch($3->truelist, $6->instr);         // Backpatching 
             $$ = new expression();                      // new expression node
             
             // Merge falselist of expression, nextlist of statement and nextlist of the last N
-            $7->nextlist = merge($8->nextlist, $7->nextlist);
-            $$->nextlist = merge($3->falselist, $7->nextlist);
+            $7->nextlist = merge_list($8->nextlist, $7->nextlist);
+            $$->nextlist = merge_list($3->falselist, $7->nextlist);
         }
         | IF LEFT_PARENTHESIS expression N RIGHT_PARENTHESIS M statement N ELSE M statement N
         {
@@ -1734,15 +1734,15 @@ S.nextlist = merge(temp, S2 .nextlist)
                 M and N markers help in backpatching
             */
             backpatch($4->nextlist, next_instruction);         // backpatching
-            convertIntToBool($3);                       // Convert expression to bool
+            convert_int_bool($3);                       // Convert expression to bool
             backpatch($3->truelist, $6->instr);         // backpatching
             backpatch($3->falselist, $10->instr);
             $$ = new expression();                      // new expression node
             
             // Merge nextlist of statement, nextlist of N and nextlist of the last statement
-            $$->nextlist = merge($7->nextlist, $8->nextlist);
-            $$->nextlist = merge($$->nextlist, $11->nextlist);
-            $$->nextlist = merge($$->nextlist, $12->nextlist);
+            $$->nextlist = merge_list($7->nextlist, $8->nextlist);
+            $$->nextlist = merge_list($$->nextlist, $11->nextlist);
+            $$->nextlist = merge_list($$->nextlist, $12->nextlist);
         }
         | SWITCH LEFT_PARENTHESIS expression RIGHT_PARENTHESIS statement
         {}
@@ -1759,7 +1759,7 @@ iteration_statement:
             
             backpatch(makelist(next_instruction - 1), $2->instr);
             backpatch($5->nextlist, next_instruction);
-            convertIntToBool($4);                       // Convert expression to bool
+            convert_int_bool($4);                       // Convert expression to bool
             $$->nextlist = $4->falselist;               // Exit loop if expression is false
             backpatch($4->truelist, $7->instr);         // Go to M2 and loop_statement if expression is true
             backpatch($8->nextlist, $2->instr);         // Go back to M1 and expression after one iteration of loop_statement
@@ -1769,7 +1769,7 @@ iteration_statement:
             
             $$ = new expression();                  // Create a new expression  
             backpatch($8->nextlist, next_instruction);     // Backpatching 
-            convertIntToBool($7);                   // Convert expression to bool
+            convert_int_bool($7);                   // Convert expression to bool
             backpatch($7->truelist, $2->instr);     // Go back to M1 and loop_statement if expression is true
             backpatch($3->nextlist, $4->instr);     // Go to M2 to check expression after statement is complete
             $$->nextlist = $7->falselist;           // Exit loop if expression is false
@@ -1779,11 +1779,11 @@ iteration_statement:
             
             $$ = new expression();                   // Create a new expression
             add_TAC("", "", "", GOTO);
-            $12->nextlist = merge($12->nextlist, makelist(next_instruction - 1));
+            $12->nextlist = merge_list($12->nextlist, makelist(next_instruction - 1));
             backpatch($12->nextlist, $7->instr);    
             backpatch($9->nextlist, $4->instr);     
             backpatch($6->nextlist, next_instruction);     
-            convertIntToBool($5);                   // Convert expression to bool
+            convert_int_bool($5);                   // Convert expression to bool
             backpatch($5->truelist, $11->instr);    // backpatching
             $$->nextlist = $5->falselist;           // Exit loop if expression is false
         }
