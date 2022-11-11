@@ -76,14 +76,16 @@ ST_entry* symbol_table::search_lexeme(string name, data_dtype t, int pc) {
 }
 
 ST_entry* symbol_table::search_global_ST(string name) {
-    return (table.count(name) ? table[name] : NULL);
+    return (table.count(name) ? table[name] : NULL);//if you can find the lexeme return its location else return null
 }
 
 string symbol_table::generate_tem_var(data_dtype t) {
     // Create the name for the temporary
-    string tempName = "t" + to_string(symbol_table::temporary_var++);
+    string tempName = "t" + to_string(symbol_table::temporary_var++);   //create a temporaray variable with name starting from t followed by current count of variable number
+    // if temporary_var = 8  then this method will create a new variable with the name t9
     
-    // Initialize the required attributes
+
+    //create a new ST_entry object with type details from temp variable
     ST_entry* sym = new ST_entry();
     sym->name = tempName;
     sym->size = sizeof_dtype(t);
@@ -92,37 +94,41 @@ string symbol_table::generate_tem_var(data_dtype t) {
     sym->initial_value = NULL;
 
     offset += sym->size;
-    list_ST_entry.push_back(sym);
-    table[tempName] = sym;  // Add the temporary to the ST_entry table
 
+    // Add the temporary to the symbol table
+    list_ST_entry.push_back(sym);
+    table[tempName] = sym;  
     return tempName;
 }
 
-void symbol_table::print_ST(string tableName) {
+void symbol_table::print_ST(string table_name) {
     for(int i = 0; i < 120; i++) {
-        cout << '-';
+        cout << '*';
     }
     cout << endl;
-    cout << "Symbol Table: " << setfill(' ') << left << setw(50) << tableName << endl;
+    cout << "\nSymbol Table: " << setfill(' ') << left << setw(50) << table_name << endl;
     for(int i = 0; i < 120; i++)
-        cout << '-';
+        cout << '*';
     cout << endl;
 
-    // Table Headers
-    cout << setfill(' ') << left << setw(25) <<  "Name";
+    // Symbol Table Column names
+    cout << setfill(' ') << left << setw(25) <<  "\nName";
     cout << left << setw(25) << "Type";
     cout << left << setw(20) << "Initial Value";
     cout << left << setw(15) << "Size";
     cout << left << setw(15) << "Offset";
     cout << left << "Nested" << endl;
 
+    //codes for basic formatting 
     for(int i = 0; i < 120; i++)
-        cout << '-';
+        cout << '*';
     cout << endl;
+    cout<<"\n";
 
-    // For storing nested ST_entry tables
+    // For storing nested symbol table
     vector<pair<string, symbol_table*>> tableList;
 
+    //setfill sets the remaining character of width with space i.e. name will be printed with a width of 50 where the remaining places are replaced by space
     // Print the list_ST_entry in the ST_entry table
     for(int i = 0; i < (int)list_ST_entry.size(); i++) {
         ST_entry* sym = list_ST_entry[i];
@@ -133,17 +139,21 @@ void symbol_table::print_ST(string tableName) {
         cout << left << setw(15) << sym->offset;
         cout << left;
 
+        // Print the symbols in the symbol table
+        //cout<<left makes padding at end and setw sets the width of symbol
+    
+        //in case the symbol table has nested symbol table
         if(sym->nested_symbol_table != NULL) {
-            string nested_symbol_tableName = tableName + "." + sym->name;
-            cout << nested_symbol_tableName << endl;
-            tableList.push_back({nested_symbol_tableName, sym->nested_symbol_table});
+            string nested_symbol_table_name = table_name + "." + sym->name;//print the name of nested symbol table
+            cout << nested_symbol_table_name << endl;
+            tableList.push_back({nested_symbol_table_name, sym->nested_symbol_table});//push all nested tabels
         }
         else
-            cout << "NULL" << endl;
+            cout << "NULL" << endl;//else print null
     }
 
     for(int i = 0; i < 120; i++)
-        cout << '-';
+        cout << '*';
     cout << endl << endl;
 
     // Recursively call the print function for the nested ST_entry tables
@@ -156,7 +166,9 @@ void symbol_table::print_ST(string tableName) {
 
 
 // Implementations of constructors and functions for the quad class
+//constructor
 quad::quad(string res_, string arg1_, string arg2_, opcode op_): op(op_), arg1(arg1_), arg2(arg2_), result(res_) {}
+
 
 string quad::print_TAC() {
     string out = "";
@@ -244,31 +256,30 @@ string quad::print_TAC() {
 }
 
 
-// Implementations of constructors and functions for the quad_TAC_arr class
 void quad_TAC_arr::print_TAC() {
     for(int i = 0; i < 120; i++)
-        cout << '-';
+        cout << '*';
     cout << endl;
-    cout << "THREE ADDRESS CODE (TAC):" << endl;
+    cout << "\nTHREE ADDRESS CODE (TAC):" << endl;
     for(int i = 0; i < 120; i++)
-        cout << '-';
-    cout << endl;
+        cout << '*';
+    cout<<'\n' << endl;
 
-    // Print each of the TAC_quad_list one by one
+    // Print TAC in appropriate format
     for(int i = 0; i < (int)TAC_quad_list.size(); i++) {
         if(TAC_quad_list[i].op != FUNC_BEG && TAC_quad_list[i].op != FUNC_END)
             cout << left << setw(4) << i << ":    ";
         else if(TAC_quad_list[i].op == FUNC_BEG)
             cout << endl << left << setw(4) << i << ": ";
         else if(TAC_quad_list[i].op == FUNC_END)
-            cout << left << setw(4) << i << ": ";
+            cout << left << setw(4) << i << ": ";//print the label and print the function symbol table once all TAC of function have been read
         cout << TAC_quad_list[i].print_TAC() << endl;
     }
     cout << endl;
 }
 
 
-// Implementations of constructors and functions for the expression class
+//constructors
 expression::expression(): order_dim(0), store_addr(NULL) {}
 
 
@@ -320,50 +331,50 @@ void backpatch(list<int> l, int address) {
 
 
 // Implementation of the overloaded convertToType functions
-void convertToType(expression* arg, expression* res, data_dtype toType) {
-    if(res->type == toType)
+void convertToType(expression* arg, expression* input, data_dtype data_type) {
+    if(input->type == data_type)
         return;
 
-    if(res->type == FLOAT) {
-        if(toType == INT)
-            add_TAC(arg->location, res->location, "", FtoI);
-        else if(toType == CHAR)
-            add_TAC(arg->location, res->location, "", FtoC);
+    if(input->type == FLOAT) {
+        if(data_type == INT)
+            add_TAC(arg->location, input->location, "", FtoI);
+        else if(data_type == CHAR)
+            add_TAC(arg->location, input->location, "", FtoC);
     }
-    else if(res->type == INT) {
-        if(toType == FLOAT)
-            add_TAC(arg->location, res->location, "", ItoF);
-        else if(toType == CHAR)
-            add_TAC(arg->location, res->location, "", ItoC);
+    else if(input->type == INT) {
+        if(data_type == FLOAT)
+            add_TAC(arg->location, input->location, "", ItoF);
+        else if(data_type == CHAR)
+            add_TAC(arg->location, input->location, "", ItoC);
     }
-    else if(res->type == CHAR) {
-        if(toType == FLOAT)
-            add_TAC(arg->location, res->location, "", CtoF);
-        else if(toType == INT)
-            add_TAC(arg->location, res->location, "", CtoI);
+    else if(input->type == CHAR) {
+        if(data_type == FLOAT)
+            add_TAC(arg->location, input->location, "", CtoF);
+        else if(data_type == INT)
+            add_TAC(arg->location, input->location, "", CtoI);
     }
 }
 
-void convertToType(string t, data_dtype to, string f, data_dtype from) {
-    if(to == from)
+void convertToType(string t, data_dtype target, string f, data_dtype source) {
+    if(target == source)
         return;
     
-    if(from == FLOAT) {
-        if(to == INT)
+    if(source == FLOAT) {
+        if(target == INT)
             add_TAC(t, f, "", FtoI);
-        else if(to == CHAR)
+        else if(target == CHAR)
             add_TAC(t, f, "", FtoC);
     }
-    else if(from == INT) {
-        if(to == FLOAT)
+    else if(source == INT) {
+        if(target == FLOAT)
             add_TAC(t, f, "", ItoF);
-        else if(to == CHAR)
+        else if(target == CHAR)
             add_TAC(t, f, "", ItoC);
     }
-    else if(from == CHAR) {
-        if(to == FLOAT)
+    else if(source == CHAR) {
+        if(target == FLOAT)
             add_TAC(t, f, "", CtoF);
-        else if(to == INT)
+        else if(target == INT)
             add_TAC(t, f, "", CtoI);
     }
 }
@@ -412,11 +423,11 @@ string typecheck(ST_entry_type t) {
 
     else if(t.type == POINTER) {        // Depending on type of pointer
         string tp = "";
-        if(t.next_elem_type == CHAR)
+        if(t.next_elem_type == CHAR)//char *
             tp += "char";
-        else if(t.next_elem_type == INT)
+        else if(t.next_elem_type == INT)//int *
             tp += "int";
-        else if(t.next_elem_type == FLOAT)
+        else if(t.next_elem_type == FLOAT)//float *
             tp += "float";
         tp += string(t.pointers, '*');
         return tp;
@@ -424,18 +435,18 @@ string typecheck(ST_entry_type t) {
 
     else if(t.type == ARRAY) {          // Depending on type of array
         string tp = "";
-        if(t.next_elem_type == CHAR)
+        if(t.next_elem_type == CHAR)//char[dimension] or char[]
             tp += "char";
-        else if(t.next_elem_type == INT)
+        else if(t.next_elem_type == INT)//int[dimension] or int[]
             tp += "int";
-        else if(t.next_elem_type == FLOAT)
+        else if(t.next_elem_type == FLOAT)//float[dimension] or float[]
             tp += "float";
         vector<int> dim = t.dims;
         for(int i = 0; i < (int)dim.size(); i++) {
             if(dim[i])
                 tp += "[" + to_string(dim[i]) + "]";
             else
-                tp += "[]";
+                tp += "[]";     
         }
         if((int)dim.size() == 0)
             tp += "[]";
@@ -443,10 +454,10 @@ string typecheck(ST_entry_type t) {
     }
 
     else
-        return "unknown";
+        return "unknown";//to flag an error or invalid data
 }
 
-// Implementation of the get_initial function
+// return the intial value stored in i,c,f depending upon type of variable
 string get_initial(ST_entry* sym) {
     if(sym->initial_value != NULL) {
         if(sym->type.type == INT)
