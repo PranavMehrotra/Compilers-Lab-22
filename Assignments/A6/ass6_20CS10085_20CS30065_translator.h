@@ -141,38 +141,22 @@ public:
 };
 
 
-/*
-    Class to represent a declaration
-    class declaration
-    ------------
-    Member Variables:
-        name: string                Name of the declaration
-        pointers: int               Number of pointers
-        type: data_dtype              Type of the declaration
-        li: vector<int>             List of instructions for the declaration
-        initial_value: expression*        Initial value of the declaration
-        pc: int                     Useful for pointers and arrays
-*/
 class declaration 
 { //declaration class
 public:
-    string name;            //name of declaration
-    int pointers;           //number of pointers in the declaration 
-    data_dtype type;        //data type of all the elements present in the declaration
-    data_dtype next_elem_type;  //next element type would be relevant in case data type of declaration is array or pointer
+    string name;                    //name of declaration
+    int pointers;                   //number of pointers in the declaration 
+    data_dtype type;                //data type of all the elements present in the declaration
+    data_dtype next_elem_type;      //next element type would be relevant in case data type of declaration is array or pointer
     
     //next element type would contain data type of elements in array/pointer
-    vector<int> li; //list of instructions for the declaration
-    expression* initial_value;//initial value of the declaration
-    int pc;//
+    vector<int> li;                 //list of instructions for the declaration
+    expression* initial_value;      //initial value of the declaration
+    int pc;                         //to be used in pointers and array
 };
 
 
-/*
-    An overloaded method to add a (newly generated) quad of the form: result = arg1 op arg2 where op usually is a binary operator. 
-    If arg2 is missing, op is unary. If op also is missing, this is a copy instruction.
-    It is overloaded for different dtype of TAC_quad_list (int, float or string)
-*/
+//to generate a tac code with different number of parameters
 void add_TAC(string result, string arg1, string arg2, opcode op);
 void add_TAC(string result, int constant, opcode op);
 void add_TAC(string result, char constant, opcode op);
@@ -180,46 +164,34 @@ void add_TAC(string result, float constant, opcode op);
 
 
 /*
-    A global function to create a new list containing only i, an index into the array of TAC_quad_list, 
+    to create a new list containing only i, an index into the array of quads, 
     and to return a pointer to the newly created list
 */
 list<int> makelist(int i);
 
-/*
-    A global function to concatenate two lists list1 and list2 and to return a pointer to the concatenated list
-*/
-list<int> merge(list<int> list1, list<int> list2);
 
-/*
-    A global function to insert address as the target label for each of the TAC_quad_list on the list l
-*/
+//to concatenate two lists and return a pointer to the concatenated list
+list<int> merge_list(list<int> list1, list<int> list2);
+
+
+    //inserts l as target label for each of the quads on the list pointed by address
+
+
 void backpatch(list<int> l, int address);
 
-/*
-    Converts a ST_entry of one type to another and returns a pointer to the converted ST_entry
-*/
-void convertToType(expression* arg, expression* res, data_dtype toType);
 
+//Converts a symbol of one type to another and returns a pointer to the new symbol
+void convertToType(expression* arg, expression* res, data_dtype toType);
 void convertToType(string t, data_dtype to, string f, data_dtype from);
 
-/*
-    Converts an int to a bool and adds required attributes
-*/
-void convertIntToBool(expression* expr);
 
-/*
-    Auxiliary function to get the size of a type
-*/
-int sizeOfType(data_dtype t);
+void convert_int_bool(expression* expr);    //int to bool
 
-/*
-    Auxiliary function to print a type
-*/
-string checkType(ST_entry_type t);
+int sizeof_dtype(data_dtype t);             //returns size of data types
 
-/*
-    Auxiliary function to get the initial value of a ST_entry
-*/
-string getInitVal(ST_entry* sym);
+
+string typecheck(ST_entry_type t);          //to check type of variable 
+
+string get_initial(ST_entry* sym);          //to get intial value of symbol
 
 #endif

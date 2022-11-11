@@ -11,18 +11,17 @@
 #include <iomanip>
 using namespace std;
 
-// Initialize the global variables
-int next_instruction = 0;
 
-// Intiailize the static variables
+int next_instruction = 0;
 int symbol_table::temporary_var = 0;
 
+//Global symbols
 quad_TAC_arr TAC_list;
 symbol_table ST_global;
 symbol_table* ST;
 
 
-// Implementations of constructors and functions for the ST_entry_value class
+//to intialize a symbol
 void ST_entry_value::initialize(int val) {
     c = f = i = val;
     p = NULL;
@@ -39,35 +38,41 @@ void ST_entry_value::initialize(float val) {
 }
 
 
-// Implementations of constructors and functions for the ST_entry class
+// constructor of a symbol
 ST_entry::ST_entry(): nested_symbol_table(NULL) {}
 
 
-// Implementations of constructors and functions for the symbol_table class
+// constructor of a symbol table with running offset set to 0
 symbol_table::symbol_table(): offset(0) {}
 
 ST_entry* symbol_table::search_lexeme(string name, data_dtype t, int pc) {
-    if(table.count(name) == 0) {
-        ST_entry* sym = new ST_entry();
+    if(table.count(name) == 0) 
+    {
+        //if the table doesn't contain the lexeme
+        ST_entry* sym = new ST_entry();//create a new symbol
+
+        //initialise other attributes
         sym->name = name;
         sym->type.type = t;
         sym->offset = offset;
         sym->initial_value = NULL;
 
+        //if the symbol is normal variable
         if(pc == 0) {
-            sym->size = sizeOfType(t);
-            offset += sym->size;
+            sym->size = sizeof_dtype(t);
+            offset += sym->size;//update offset
         }
         else {
-            sym->size = 8;
+            //if the symbol is of type pointer or array
+            sym->size = 8;//set size of pointer to 8
             sym->type.next_elem_type = t;
             sym->type.pointers = pc;
             sym->type.type = ARRAY;
         }
-        list_ST_entry.push_back(sym);
-        table[name] = sym;
+        list_ST_entry.push_back(sym);//add the symbol to table
+        table[name] = sym;//appropriately map the symbol to lexeme
     }
-    return table[name];
+    return table[name];//else directly return pointer to symbol table 
 }
 
 ST_entry* symbol_table::search_global_ST(string name) {
@@ -81,7 +86,7 @@ string symbol_table::generate_tem_var(data_dtype t) {
     // Initialize the required attributes
     ST_entry* sym = new ST_entry();
     sym->name = tempName;
-    sym->size = sizeOfType(t);
+    sym->size = sizeof_dtype(t);
     sym->offset = offset;
     sym->type.type = t;
     sym->initial_value = NULL;
@@ -122,8 +127,8 @@ void symbol_table::print_ST(string tableName) {
     for(int i = 0; i < (int)list_ST_entry.size(); i++) {
         ST_entry* sym = list_ST_entry[i];
         cout << left << setw(25) << sym->name;
-        cout << left << setw(25) << checkType(sym->type);
-        cout << left << setw(20) << getInitVal(sym);
+        cout << left << setw(25) << typecheck(sym->type);
+        cout << left << setw(20) << get_initial(sym);
         cout << left << setw(15) << sym->size;
         cout << left << setw(15) << sym->offset;
         cout << left;
@@ -300,7 +305,7 @@ list<int> makelist(int i) {
 }
 
 // Implementation of the merge function
-list<int> merge(list<int> list1, list<int> list2) {
+list<int> merge_list(list<int> list1, list<int> list2) {
     list1.merge(list2);
     return list1;
 }
@@ -363,8 +368,8 @@ void convertToType(string t, data_dtype to, string f, data_dtype from) {
     }
 }
 
-// Implementation of the convertIntToBool function
-void convertIntToBool(expression* expr) {
+// Implementation of the convert_int_bool function
+void convert_int_bool(expression* expr) {
     if(expr->type != BOOL) {
         expr->type = BOOL;
         expr->falselist = makelist(next_instruction);    // Add falselist for boolean expressions
@@ -374,8 +379,8 @@ void convertIntToBool(expression* expr) {
     }
 }
 
-// Implementation of the sizeOfType function
-int sizeOfType(data_dtype t) {
+// Implementation of the sizeof_dtype function
+int sizeof_dtype(data_dtype t) {
     if(t == VOID)
         return 0;
     else if(t == CHAR)
@@ -392,8 +397,8 @@ int sizeOfType(data_dtype t) {
         return 0;
 }
 
-// Implementation of the checkType function
-string checkType(ST_entry_type t) {
+// Implementation of the typecheck function
+string typecheck(ST_entry_type t) {
     if(t.type == VOID)
         return "void";
     else if(t.type == CHAR)
@@ -441,8 +446,8 @@ string checkType(ST_entry_type t) {
         return "unknown";
 }
 
-// Implementation of the getInitVal function
-string getInitVal(ST_entry* sym) {
+// Implementation of the get_initial function
+string get_initial(ST_entry* sym) {
     if(sym->initial_value != NULL) {
         if(sym->type.type == INT)
             return to_string(sym->initial_value->i);
