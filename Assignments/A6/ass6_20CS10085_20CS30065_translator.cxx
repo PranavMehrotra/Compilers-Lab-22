@@ -1,6 +1,6 @@
 /**
-* Vanshita Garg | 19CS10064
-* Ashutosh Kumar Singh | 19CS30008
+* Pranav Mehrotra, 20CS10085
+* Saransh Sharma, 20CS30065
 * Compilers Laboratory
 * Assignment 6
 *
