@@ -3,11 +3,11 @@ int printInt (int n);
 int readInt (int *eP);
 
 // Global declarations
-float d = 2.3;
+int a = 23, *p, b;               // pointer declaration
+int w[7];                      // 1D array declaration
 char c; 
 int i, j, k, l, m;
-int w[10];                      // 1D array declaration
-int a = 4, *p, b;               // pointer declaration
+float d = 7.7;
 
 int main () {
     int x;                      // Variable Declarations

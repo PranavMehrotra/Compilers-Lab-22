@@ -1,39 +1,35 @@
-// Include predefined functions 
 int printStr (char *ch);
 int printInt (int n);
 int readInt (int *eP);
 
-// Function to find maximum subarray sum
-int maxSubArrSum (int a[], int n) {                 // Array as parameter                 
-    int max_so_far = -1000, max_ending_here = 0; 
-    int i;
-    for (i = 0; i < n; i++) { 
-        max_ending_here = max_ending_here + a[i]; 
-        if (max_so_far < max_ending_here) {
-            max_so_far = max_ending_here; 
+
+int main() {
+    int loop_count = 1;
+    do {                                    // Testing do while loop
+        printStr("Entered for iteration ");
+        printInt(loop_count++);            // Incrementor in printStr
+        printStr("\n");
+    } while (loop_count < 10);
+
+    // Scope management 
+    { 
+        int p = 32;
+        printStr("\nScope 1: ");
+        printInt(p);
+        { 
+            int p = 27;
+            printStr("\nScope 2: ");
+            printInt(p);
+            { 
+                int p = 13;
+                if (p == 13) {
+                    printStr("\nEntered in the p == 13 condition if block.");
+                }
+                printStr("\nScope 3: ");
+                printInt(p);
+                printStr("\n");
+            }
         }
-  
-        if (max_ending_here < 0) {
-            max_ending_here = 0; 
-        }
-    } 
-    return max_so_far; 
-} 
-  
-// Driver program to test maxSubArrSum
-int main() { 
-    int a[8];
-    a[0]= -20;
-    a[1]= -30;
-    a[2]= 40;
-    a[3]= -10;
-    a[4]= -20;
-    a[5]= 10;
-    a[6]= 50;
-    a[7]= -370;
-    int max_subArr_sum = maxSubArrSum(a, 8);        // Passing array as argument
-    printStr("Maximum contiguous sum is ");
-    printInt(max_subArr_sum);
-    printStr("\n");
-    return 0; 
+    }
+    return 0;
 }
