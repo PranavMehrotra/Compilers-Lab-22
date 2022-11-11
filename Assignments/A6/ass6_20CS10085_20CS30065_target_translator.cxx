@@ -14,17 +14,17 @@
 using namespace std;
 
 // External variables
-extern symbol_table ST_global;
-extern symbol_table* ST;
 extern quad_TAC_arr TAC_list;
+extern symbol_table* ST;
+extern symbol_table ST_global;
 
 // Declare global variables
-vector<string> string_constants;
+string assembly_file;
+int label_num = 0;
+stack<pair<string, int>> params;
 map<int, string> labels;
-stack<pair<string, int>> parameters;
-int labelCount = 0;
-string funcRunning = "";
-string asmFileName;
+vector<string> f_strings;
+string function_name = "";
 
 
 // Prints the global information to the assembly file
@@ -59,24 +59,24 @@ void printGlobal(ofstream& sfile) {
     }
 }
 
-// Prints all the strings used in the program to the assembly file
+// Function to insert the strings in the assembly file 
 void printStrings(ofstream& sfile) {
     sfile << ".section\t.rodata" << endl;
     int i = 0;
-    for(vector<string>::iterator it = string_constants.begin(); it != string_constants.end(); it++) {
+    for(vector<string>::iterator it = f_strings.begin(); it != f_strings.end(); it++) {
         sfile << ".LC" << i++ << ":" << endl;
         sfile << "\t.string " << *it << endl;
     }
 }
 
-// Generates labels for different targets of goto statements
+// Function to generate labels for different goto statements of the code
 void setLabels() {
     int i = 0;
     for(vector<quad>::iterator it = TAC_list.TAC_quad_list.begin(); it != TAC_list.TAC_quad_list.end(); it++) {
         if(it->op == GOTO || (it->op >= GOTO_EQ && it->op <= IF_FALSE_GOTO)) {
             int target = atoi((it->result.c_str()));
             if(!labels.count(target)) {
-                string labelName = ".L" + to_string(labelCount++);
+                string labelName = ".L" + to_string(label_num++);
                 labels[target] = labelName;
             }
             it->result = labels[target];
@@ -84,20 +84,20 @@ void setLabels() {
     }
 }
 
-// Generates the function prologue to be printed before each function
-// Generic tasks like allocationating space for variables on the stack are performed here
+// Function to generate the prologue for the functions
+// It pushes the registers on the stack and allocates space for the local variables
 void generatePrologue(int memBind, ofstream& sfile) {
     int width = 16;
     sfile << endl << "\t.text" << endl;
-    sfile << "\t.globl\t" << funcRunning << endl;
-    sfile << "\t.type\t" << funcRunning << ", @function" << endl;
-    sfile << funcRunning << ":" << endl;
+    sfile << "\t.globl\t" << function_name << endl;
+    sfile << "\t.type\t" << function_name << ", @function" << endl;
+    sfile << function_name << ":" << endl;
     sfile << "\tpushq\t" << "%rbp" << endl;
     sfile << "\tmovq\t" << "%rsp, %rbp" << endl;
     sfile << "\tsubq\t$" << (memBind / width + 1) * width << ", %rsp" << endl;
 }
 
-// Generates assembly code for a given three address quad
+// Function to generate assembly code for a given three address quad
 void quadCode(quad q, ofstream& sfile) {
     string strLabel = q.result;
     bool hasStrLabel = (q.result[0] == '.' && q.result[1] == 'L' && q.result[2] == 'C');
@@ -225,37 +225,37 @@ void quadCode(quad q, ofstream& sfile) {
     else if(q.op == GOTO_LT) {
         sfile << "\tmovl\t" << toPrint1 << ", %eax" << endl;
         sfile << "\tcmpl\t" << toPrint2 << ", %eax" << endl;
-        sfile << "\tjge\t.L" << labelCount << endl;
+        sfile << "\tjge\t.L" << label_num << endl;
         sfile << "\tjmp\t" << q.result << endl;
-        sfile << ".L" << labelCount++ << ":" << endl;
+        sfile << ".L" << label_num++ << ":" << endl;
     }
     else if(q.op == GOTO_GT) {
         sfile << "\tmovl\t" << toPrint1 << ", %eax" << endl;
         sfile << "\tcmpl\t" << toPrint2 << ", %eax" << endl;
-        sfile << "\tjle\t.L" << labelCount << endl;
+        sfile << "\tjle\t.L" << label_num << endl;
         sfile << "\tjmp\t" << q.result << endl;
-        sfile << ".L" << labelCount++ << ":" << endl;
+        sfile << ".L" << label_num++ << ":" << endl;
     }
     else if(q.op == GOTO_GTE) {
         sfile << "\tmovl\t" << toPrint1 << ", %eax" << endl;
         sfile << "\tcmpl\t" << toPrint2 << ", %eax" << endl;
-        sfile << "\tjl\t.L" << labelCount << endl;
+        sfile << "\tjl\t.L" << label_num << endl;
         sfile << "\tjmp\t" << q.result << endl;
-        sfile << ".L" << labelCount++ << ":" << endl;
+        sfile << ".L" << label_num++ << ":" << endl;
     }
     else if(q.op == GOTO_LTE) {
         sfile << "\tmovl\t" << toPrint1 << ", %eax" << endl;
         sfile << "\tcmpl\t" << toPrint2 << ", %eax" << endl;
-        sfile << "\tjg\t.L" << labelCount << endl;
+        sfile << "\tjg\t.L" << label_num << endl;
         sfile << "\tjmp\t" << q.result << endl;
-        sfile << ".L" << labelCount++ << ":" << endl;
+        sfile << ".L" << label_num++ << ":" << endl;
     }
     else if(q.op == GOTO_GTE) {
         sfile << "\tmovl\t" << toPrint1 << ", %eax" << endl;
         sfile << "\tcmpl\t" << toPrint2 << ", %eax" << endl;
-        sfile << "\tjl\t.L" << labelCount << endl;
+        sfile << "\tjl\t.L" << label_num << endl;
         sfile << "\tjmp\t" << q.result << endl;
-        sfile << ".L" << labelCount++ << ":" << endl;
+        sfile << ".L" << label_num++ << ":" << endl;
     }
     else if(q.op == GOTO_EQ) {
         sfile << "\tmovl\t" << toPrint1 << ", %eax" << endl;
@@ -263,30 +263,30 @@ void quadCode(quad q, ofstream& sfile) {
             sfile << "\tcmpl\t$" << q.arg2 << ", %eax" << endl;
         else
             sfile << "\tcmpl\t" << toPrint2 << ", %eax" << endl;
-        sfile << "\tjne\t.L" << labelCount << endl;
+        sfile << "\tjne\t.L" << label_num << endl;
         sfile << "\tjmp\t" << q.result << endl;
-        sfile << ".L" << labelCount++ << ":" << endl;
+        sfile << ".L" << label_num++ << ":" << endl;
     }
     else if(q.op == GOTO_NEQ) {
         sfile << "\tmovl\t" << toPrint1 << ", %eax" << endl;
         sfile << "\tcmpl\t" << toPrint2 << ", %eax" << endl;
-        sfile << "\tje\t.L" << labelCount << endl;
+        sfile << "\tje\t.L" << label_num << endl;
         sfile << "\tjmp\t" << q.result << endl;
-        sfile << ".L" << labelCount++ << ":" << endl;
+        sfile << ".L" << label_num++ << ":" << endl;
     }
     else if(q.op == IF_GOTO) {
         sfile << "\tmovl\t" << toPrint1 << ", %eax" << endl;
         sfile << "\tcmpl\t$0" << ", %eax" << endl;
-        sfile << "\tje\t.L" << labelCount << endl;
+        sfile << "\tje\t.L" << label_num << endl;
         sfile << "\tjmp\t" << q.result << endl;
-        sfile << ".L" << labelCount++ << ":" << endl;
+        sfile << ".L" << label_num++ << ":" << endl;
     }
     else if(q.op == IF_FALSE_GOTO) {
         sfile << "\tmovl\t" << toPrint1 << ", %eax" << endl;
         sfile << "\tcmpl\t$0" << ", %eax" << endl;
-        sfile << "\tjne\t.L" << labelCount << endl;
+        sfile << "\tjne\t.L" << label_num << endl;
         sfile << "\tjmp\t" << q.result << endl;
-        sfile << ".L" << labelCount++ << ":" << endl;
+        sfile << ".L" << label_num++ << ":" << endl;
     }
     else if(q.op == ARR_R) {
         sfile << "\tmovl\t" << toPrint2 << ", %edx" << endl;
@@ -370,70 +370,71 @@ void quadCode(quad q, ofstream& sfile) {
                 }
             }
         }
-        parameters.push(make_pair(ss.str(), paramSize));
+        params.push(make_pair(ss.str(), paramSize));
     }
     else if(q.op == CALL) {
         int numParams = atoi(q.arg1.c_str());
         int totalSize = 0, k = 0;
 
-        // We need different registers based on the parameters
+        // If number of parameters is more than 6
         if(numParams > 6) {
             for(int i = 0; i < numParams - 6; i++) {
-                string s = parameters.top().first;
+                string s = params.top().first;
                 sfile << s << "\tpushq\t%rax" << endl;
-                totalSize += parameters.top().second;
-                parameters.pop();
+                totalSize += params.top().second;
+                params.pop();
             }
-            sfile << parameters.top().first << "\tpushq\t%rax" << endl << "\tmovq\t%rax, %r9d" << endl;
-            totalSize += parameters.top().second;
-            parameters.pop();
-            sfile << parameters.top().first << "\tpushq\t%rax" << endl << "\tmovq\t%rax, %r8d" << endl;
-            totalSize += parameters.top().second;				
-            parameters.pop();
-            sfile << parameters.top().first << "\tpushq\t%rax" << endl << "\tmovq\t%rax, %rcx" << endl;
-            totalSize += parameters.top().second;
-            parameters.pop();
-            sfile << parameters.top().first << "\tpushq\t%rax" << endl << "\tmovq\t%rax, %rdx" << endl;
-            totalSize += parameters.top().second;
-            parameters.pop();
-            sfile << parameters.top().first << "\tpushq\t%rax" << endl << "\tmovq\t%rax, %rsi" << endl;
-            totalSize += parameters.top().second;
-            parameters.pop();
-            sfile << parameters.top().first << "\tpushq\t%rax" << endl << "\tmovq\t%rax, %rdi" << endl;
-            totalSize += parameters.top().second;
-            parameters.pop();
+            sfile << params.top().first << "\tpushq\t%rax" << endl << "\tmovq\t%rax, %r9d" << endl;
+            totalSize += params.top().second;
+            params.pop();
+            sfile << params.top().first << "\tpushq\t%rax" << endl << "\tmovq\t%rax, %r8d" << endl;
+            totalSize += params.top().second;				
+            params.pop();
+            sfile << params.top().first << "\tpushq\t%rax" << endl << "\tmovq\t%rax, %rcx" << endl;
+            totalSize += params.top().second;
+            params.pop();
+            sfile << params.top().first << "\tpushq\t%rax" << endl << "\tmovq\t%rax, %rdx" << endl;
+            totalSize += params.top().second;
+            params.pop();
+            sfile << params.top().first << "\tpushq\t%rax" << endl << "\tmovq\t%rax, %rsi" << endl;
+            totalSize += params.top().second;
+            params.pop();
+            sfile << params.top().first << "\tpushq\t%rax" << endl << "\tmovq\t%rax, %rdi" << endl;
+            totalSize += params.top().second;
+            params.pop();
         }
+        // Else if number of parameters less than or eual to 6
         else {
-            while(!parameters.empty()) {
-                if(parameters.size() == 6) {
-                    sfile << parameters.top().first << "\tpushq\t%rax" << endl << "\tmovq\t%rax, %r9d" << endl;
-                    totalSize += parameters.top().second;
-                    parameters.pop();
+            while(!params.empty()) {
+                if(params.size() == 6) {
+                    sfile << params.top().first << "\tpushq\t%rax" << endl << "\tmovq\t%rax, %r9d" << endl;
+                    totalSize += params.top().second;
+                    params.pop();
                 }
-                else if(parameters.size() == 5) {
-                    sfile << parameters.top().first << "\tpushq\t%rax" << endl << "\tmovq\t%rax, %r8d" << endl;
-                    totalSize += parameters.top().second;
-                    parameters.pop();
+                else if(params.size() == 5) {
+                    sfile << params.top().first << "\tpushq\t%rax" << endl << "\tmovq\t%rax, %r8d" << endl;
+                    totalSize += params.top().second;
+                    params.pop();
                 }
-                else if(parameters.size() == 4) {
-                    sfile << parameters.top().first << "\tpushq\t%rax" << endl << "\tmovq\t%rax, %rcx" << endl;
-                    totalSize += parameters.top().second;
-                    parameters.pop();
+                else if(params.size() == 4) {
+                    sfile << params.top().first << "\tpushq\t%rax" << endl << "\tmovq\t%rax, %rcx" << endl;
+                    totalSize += params.top().second;
+                    params.pop();
                 }
-                else if(parameters.size() == 3) {
-                    sfile << parameters.top().first << "\tpushq\t%rax" << endl << "\tmovq\t%rax, %rdx" << endl;
-                    totalSize += parameters.top().second;
-                    parameters.pop();
+                else if(params.size() == 3) {
+                    sfile << params.top().first << "\tpushq\t%rax" << endl << "\tmovq\t%rax, %rdx" << endl;
+                    totalSize += params.top().second;
+                    params.pop();
                 }
-                else if(parameters.size() == 2) {
-                    sfile << parameters.top().first << "\tpushq\t%rax" << endl << "\tmovq\t%rax, %rsi" << endl;
-                    totalSize += parameters.top().second;
-                    parameters.pop();
+                else if(params.size() == 2) {
+                    sfile << params.top().first << "\tpushq\t%rax" << endl << "\tmovq\t%rax, %rsi" << endl;
+                    totalSize += params.top().second;
+                    params.pop();
                 }
-                else if(parameters.size() == 1) {
-                    sfile << parameters.top().first << "\tpushq\t%rax" << endl << "\tmovq\t%rax, %rdi" << endl;
-                    totalSize += parameters.top().second;
-                    parameters.pop();
+                else if(params.size() == 1) {
+                    sfile << params.top().first << "\tpushq\t%rax" << endl << "\tmovq\t%rax, %rdi" << endl;
+                    totalSize += params.top().second;
+                    params.pop();
                 }
             }
         }
@@ -451,7 +452,7 @@ void quadCode(quad q, ofstream& sfile) {
 
 }
 
-// Main function which calls all other relevant functions for generating the target assembly code
+// Main function
 void generateTargetCode(ofstream& sfile) {
     printGlobal(sfile);
     printStrings(sfile);
@@ -460,7 +461,7 @@ void generateTargetCode(ofstream& sfile) {
     setLabels();
 
     for(int i = 0; i < (int)TAC_list.TAC_quad_list.size(); i++) {
-        // Print the quad as a comment in the assembly file
+        // Print the TAC as comment in the file
         sfile << "# " << TAC_list.TAC_quad_list[i].print_TAC() << endl;
         if(labels.count(i))
             sfile << labels[i] << ":" << endl;
@@ -499,20 +500,20 @@ void generateTargetCode(ofstream& sfile) {
                 memBind = 0;
             else
                 memBind *= -1;
-            funcRunning = TAC_list.TAC_quad_list[i].result;
+            function_name = TAC_list.TAC_quad_list[i].result;
             generatePrologue(memBind, sfile);
         }
 
-        // Function epilogue (while leaving a function)
+        // Function which is called when returning from a function
         else if(TAC_list.TAC_quad_list[i].op == FUNC_END) {
             ST = &ST_global;
-            funcRunning = "";
+            function_name = "";
             sfile << "\tleave" << endl;
             sfile << "\tret" << endl;
             sfile << "\t.size\t" << TAC_list.TAC_quad_list[i].result << ", .-" << TAC_list.TAC_quad_list[i].result << endl;
         }
 
-        if(funcRunning != "")
+        if(function_name != "")
             quadCode(TAC_list.TAC_quad_list[i], sfile);
     }
 }
@@ -521,9 +522,9 @@ int main(int argc, char* argv[]) {
     ST = &ST_global;
     yyparse();
 
-    asmFileName = "ass6_20CS10085_20CS30065_" + string(argv[argc - 1]) + ".s";
+    assembly_file = "ass6_20CS10085_20CS30065_" + string(argv[argc - 1]) + ".s";
     ofstream sfile;
-    sfile.open(asmFileName);
+    sfile.open(assembly_file);
 
     TAC_list.print_TAC();               // Print the three address TAC_quad_list
 
@@ -531,7 +532,7 @@ int main(int argc, char* argv[]) {
 
     ST = &ST_global;
 
-    generateTargetCode(sfile);      // Generate the target assembly code
+    generateTargetCode(sfile);      // Function to generate the target assembly code
 
     sfile.close();
 

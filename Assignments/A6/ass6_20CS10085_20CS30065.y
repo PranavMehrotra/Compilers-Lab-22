@@ -16,7 +16,7 @@
     extern quad_TAC_arr TAC_list;              
     extern symbol_table ST_global;            
     extern symbol_table* ST;                 
-    extern vector<string> string_constants;     
+    extern vector<string> f_strings;     
 
     int num_strings = 0;                       
 %}
@@ -166,7 +166,7 @@ primary_expression:
         {
             $$ = new expression();                          // new expression node
             $$->location = ".LC" + to_string(num_strings++);//create a new string label with prefix LC that indicates string parameters in .s files
-            string_constants.push_back(*($1));          // update the number of strings, that will be used in naming label 
+            f_strings.push_back(*($1));          // update the number of strings, that will be used in naming label 
                                                         //add the string to set of string constants
         }
         | LEFT_PARENTHESIS expression RIGHT_PARENTHESIS
@@ -209,20 +209,20 @@ postfix_expression:
 
             //function call with the function name and parameter list
             symbol_table* function_ST = ST_global.search_lexeme($1->location)->nested_symbol_table;
-            vector<param*> parameters = *($3);                                      // Get the list of parameters
+            vector<param*> params = *($3);                                      // Get the list of parameters
             vector<ST_entry*> paramsList = function_ST->list_ST_entry;
 
-            for(int i = 0; i < (int)parameters.size(); i++) {
-                add_TAC(parameters[i]->name, "", "", PARAM);                        //create a tac for each of the parameter
+            for(int i = 0; i < (int)params.size(); i++) {
+                add_TAC(params[i]->name, "", "", PARAM);                        //create a tac for each of the parameter
             }
 
             data_dtype return_type = function_ST->search_lexeme("RETVAL")->type.type;  // extract the return type of the function
             if(return_type == VOID)                                                     // If the function returns void
-                add_TAC($1->location, (int)parameters.size(), CALL);                //tac would be like call func_name, param_num
+                add_TAC($1->location, (int)params.size(), CALL);                //tac would be like call func_name, param_num
 
             else {                                                                  // If the function returns a value
                 string return_value = ST->generate_tem_var(return_type);                      //generate a temporary variable to store return value
-                add_TAC($1->location, to_string(parameters.size()), return_value, CALL);  //t = call func_name, paaram_num
+                add_TAC($1->location, to_string(params.size()), return_value, CALL);  //t = call func_name, paaram_num
                 $$ = new expression();
                 $$->location = return_value;                                              
             }
