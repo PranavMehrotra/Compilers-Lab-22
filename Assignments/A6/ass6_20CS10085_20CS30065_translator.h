@@ -9,9 +9,7 @@
 using namespace std;
 
 
-/*
-    enum specifying all legal data types
-*/
+//enum specifying all legal data types
 typedef enum {
     VOID,
     BOOL,
@@ -23,9 +21,8 @@ typedef enum {
     FUNCTION
 } data_dtype;
 
-/*
-    enum spcifying all legal opcodes
-*/
+
+//enum spcifying all legal opcodes
 typedef enum  {
     ADD, SUB, MULT, DIV, MOD, SL, SR, //arithmetic
     BW_AND, BW_OR, BW_XOR, //binary operator
@@ -36,86 +33,53 @@ typedef enum  {
 } opcode;
 
 
-/*
-    ST_entry             Represents a symbol in the symbol table
-    ST_entry_type        Represents the type of symbol
-    ST_entry_value        Represents the value of the symbol
-    symbol_table         data structure containing list of symbols i.e. symbol table
-    quad                 a quad format code
-    quad_TAC_arr         list of TAC_quad_list that will be used to print TAC codes      
-*/
-class ST_entry;
-class ST_entry_type;
-class ST_entry_value;
-class symbol_table;
+class ST_entry;                 //Represents a symbol in the symbol table
+class ST_entry_type;            //Represents the type of symbol
+class ST_entry_value;           //Represents the value of the symbol
+class symbol_table;             //data structure containing list of symbols i.e. symbol table
 
-class quad;
-class quad_TAC_arr;
+class quad;                     //a quad format code
+class quad_TAC_arr;             //list of TAC_quad_list that will be used to print TAC codes      
 
 
 //External functions exported from bison
 extern char* yytext;
 extern int yyparse();
 
-
-/*
-    symbol type
-        pointers: int                       only useful in case the symbol is of type pointer
-        type: data_dtype                    The data type of the symbol
-        next_elem_type: ST_entry_type       pointer to the type of elements in an arary or the data pointed to by a pointer
-        dims: vector<int>                   dimension of an array stored in the form of vector
-*/
 class ST_entry_type {
-public:
-    int pointers;
-    data_dtype type;
-    data_dtype next_elem_type;
-    vector<int> dims;
+    //type of symbol 
+public: 
+    int pointers;                       //only useful in case the symbol is of type pointer
+    data_dtype type;                    //The data type of the symbol
+    data_dtype next_elem_type;          //pointer to the type of elements in an arary or the data pointed to by a pointer
+    vector<int> dims;                   //dimension of an array stored in the form of vector
 };
 
 
-/*
-    value of a symbol 
-    different members would be used to store values of different data type's variables
-
-        i: int                 For integer
-        f: float               For float
-        c: char                For character
-        p: void*               For pointer
-*/
 class ST_entry_value {
+//value of a symbol
 public:
-    int i;
-    char c;
-    float f;
-    void* p;
+    int i;                          //to store int value
+    char c;                         //to store char value
+    float f;                        //to store float value
+    void* p;                        //to store pointer value
 
-    void initialize(int val);       //member function to assign initial value to member variables
+    void initialize(int val);       //member function to assign initial value to member variables 
     void initialize(char val);
     void initialize(float val);
 };
 
-
-/*
-    represents a row of symbol table
-        name: string                            the name of the symbol
-        type: ST_entry_type                     type of the symbol
-        initial_value: ST_entry_value*          initial value of the symbol
-        size: int                               size of symbol
-        offset: int                             offset of the symbol
-        nested_symbol_table: symbol_table*      Pointer to a nested symbol table for blocks and function
-    
-*/
 class ST_entry {
+//symbol table row
 public:
-    string name;
-    ST_entry_type type;
-    ST_entry_value* initial_value;
-    int size;
-    int offset;
-    symbol_table* nested_symbol_table;
+    string name;                            //name of symbol
+    ST_entry_type type;                     //type of symbol
+    ST_entry_value* initial_value;          //intial value of symbol
+    int size;                               //size of symbol 
+    int offset;                             //offset to keep track of relative addressing
+    symbol_table* nested_symbol_table;      //nested_symbol_table for blocks and functions
 
-    ST_entry();                                                                     //constructor
+    ST_entry();                             //constructor
 };
 
 
@@ -134,15 +98,16 @@ public:
 };
 
 class quad {
+//to store tac codes in quad format
 public:
-    opcode op;                                                                      //opcode
-    string arg1;                                        //argument 1
-    string arg2;                                        //argumnet 2
-    string result;                                      //result 
+    opcode op;                                                          //opcode
+    string arg1;                                                        //argument 1
+    string arg2;                                                        //argumnet 2
+    string result;                                                      //result 
     //result = arg1 op arg2
-    quad(string, string, string, opcode);               //generate a quad datastructure to store quad commands
+    quad(string, string, string, opcode);                               //generate a quad datastructure to store quad commands
 
-    string print_TAC();                                 //print TAC code in appropriate format
+    string print_TAC();                                                 //print TAC code in appropriate format
 };
 
 class quad_TAC_arr {
@@ -169,10 +134,10 @@ public:
     list<int> truelist;         //truelist i.e. list of intructions that will jump to label if the expression evaluated to true
     list<int> falselist;        //falselist 
     list<int> nextlist;         //nextlist
-    int order_dim;                   //order_dim to keep track of dimension of arrays and pointers
-    string* store_addr;             //store_addr keeps a track of expression address whose address is provided in case expression is of type array or pointer
+    int order_dim;              //order_dim to keep track of dimension of arrays and pointers
+    string* store_addr;         //store_addr keeps a track of expression address whose address is provided in case expression is of type array or pointer
 
-    expression();
+    expression();               //constructor for expression
 };
 
 
