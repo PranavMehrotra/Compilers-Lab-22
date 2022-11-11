@@ -1,141 +1,69 @@
 %{
-#include "ass5_20CS10085_20CS30065_translator.h"
-#include <string>
-#include<iomanip>
-#include<iostream>
-extern int yylex();
-extern int lineno;
-void yyerror(string s);
+    #include <iostream>
+    #include "ass6_20CS10085_20CS30065_translator.h"
+    using namespace std;
+
+    //from lexer
+    extern int yylex();                     
+    extern char* yytext;                    
+    extern int yylineno;                    
+
+    //to report error in bison
+    void yyerror(string s);                 
+
+    //to keep track of global data structures shared across all files
+    extern int next_instruction;                   
+    extern quad_TAC_arr TAC_list;              
+    extern symbol_table ST_global;            
+    extern symbol_table* ST;                 
+    extern vector<string> string_constants;     
+
+    int num_strings = 0;                       
 %}
 
+%union {
+    //set of placeholders
+    int intval;                     // For integer variable
+    char charval;                   // For char variable
+    float floatval;                 // For float variable
+    void* ptr;                      // For pointer
+    string* str;                    // For string
 
-%union{
-    //for constants
-    int intval;
-    char *floatval;
-    char *charval;
-    char *stringval;
-    
-    //to keep a track of current instruction
-    int inst_num;
-
-    char unary_op;
-    int num_params;
-    
-    expression* expr;
-    statement* stmt;
-    
-    //for identifier
-    ST_entry* idval;
-    
-    ST_entry_type* symbol_type;
-    array_data_type* arr;
+    ST_entry_type* symType;            
+    ST_entry* symp;                   
+    data_dtype dtype;                 
+    opcode opc;                     
+    expression* expr;               
+    declaration* dec;               
+    vector<declaration*> *decList;  
+    param* parameter;                     
+    vector<param*> *parameterList;        
 }
 
-    //terminal are declared of type token
-%token AUTO
-%token BREAK
-%token CASE 
-%token CHAR
-%token CONST
-%token CONTINUE
-%token DEFAULT
-%token DO
-%token DOUBLE
-%token ELSE
-%token ENUM
-%token EXTERN
-%token FLOAT
-%token FOR 
-%token GOTO
-%token IF
-%token INLINE
-%token INT
-%token LONG
-%token REGISTER
-%token RESTRICT
-%token RETURN
-%token SHORT
-%token SIGNED
-%token SIZEOF
-%token STATIC
-%token SWITCH
-%token UNSIGNED
-%token VOID
-%token VOLATILE
-%token WHILE
-%token _BOOL
-%token _COMPLEX
-%token _IMAGINARY
+/*
+    All tokens
+*/
+%token AUTO BREAK CASE CHAR_ CONST CONTINUE DEFAULT DO DOUBLE ELSE ENUM EXTERN FLOAT_ FOR GOTO_ IF INLINE INT_ LONG REGISTER RESTRICT RETURN_ SHORT SIGNED SIZEOF STATIC STRUCT SWITCH TYPEDEF UNION UNSIGNED VOID_ VOLATILE WHILE BOOL_ COMPLEX IMAGINARY
+%token LEFT_SQUARE RIGHT_SQUARE LEFT_PARENTHESIS RIGHT_PARENTHESIS LEFT_CURLY RIGHT_CURLY 
+%token DOT ARROW SELF_INCREASE SELF_DECREASE BITWISE_AND MUL PLUS SUBTRACT BITWISE_NOR EXCLAMATION F_SLASH MODULO 
+%token LEFT_SHIFT RIGHT_SHIFT LESS_THAN GREATER_THAN LESS_THAN_EQUAL GREATER_THAN_EQUAL EQUAL NOT_EQUAL BITWISE_XOR BITWISE_OR 
+%token LOGICAL_AND LOGICAL_OR QUESTION_MARK COLON SEMICOLON ELLIPSIS 
+%token ASSIGN_ MUL_ASSIGN F_SLASH_ASSIGN MODULO_ASSIGN PLUSASSIGN SUBTRACT_ASSIGN LEFT_SHIFT_ASSIGN RIGHT_SHIFT_ASSIGN BITWISE_AND_ASSIGN BITWISE_XOR_ASSIGN BITWISE_OR_ASSIGN COMMA HASH
 
-    //token declaration for constants and identifier that will act as placeholders
-%token<idval> IDENTIFIER
-%token<intval> INTEGER_CONSTANT
-%token<floatval> FLOATING_CONSTANT
-%token<charval> CHARACTER_CONSTANT
-%token<stringval> STRING_LITERAL
+// identifier
+%token <str> IDENTIFIER
 
-%token LEFT_SQUARE
-%token SELF_INCREASE 
-%token F_SLASH
-%token QUESTION_MARK
-%token ASSIGN 
-%token COMMA
-%token RIGHT_SQUARE
-%token LEFT_PARENTHESES
-%token LEFT_CURLY
-%token RIGHT_CURLY
-%token DOT
-%token ARROW
-%token MUL
-%token PLUS
-%token MINUS
-%token TILDE
-%token EXCLAMATION
-%token MODULO
-%token LEFT_SHIFT
-%token RIGHT_SHIFT
-%token LESS_THAN
-%token GREATER_THAN
-%token LESS_THAN_EQUAL
-%token GREATER_THAN_EQUAL
-%token COLON
-%token SEMI_COLON
-%token ELLIPSIS
-%token MUL_ASSIGN 
-%token DIV_ASSIGN 
-%token MODULO_ASSIGN 
-%token PLUS_ASSIGN 
-%token MINUS_ASSIGN 
-%token LEFT_SHIFT_ASSIGN 
-%token SELF_DECREASE 
-%token RIGHT_PARENTHESES
-%token BITWISE_AND
-%token EQUAL
-%token BITWISE_XOR
-%token BITWISE_OR
-%token LOGICAL_AND
-%token LOGICAL_BITWISE_OR
-%token RIGHT_SHIFT_ASSIGN 
-%token NOT_EQUAL
-%token BITWISE_AND_ASSIGN 
-%token BITWISE_XOR_ASSIGN
-%token BITWISE_OR_ASSIGN 
+// integral constant
+%token <intval> INTEGER_CONSTANT
 
-%token INVALID
+// floating constant
+%token <floatval> FLOATING_CONSTANT
 
-    //to prevent issues of ambiguity and dangling else
-%right RIGHT_PARENTHESES
-%right THEN ELSE
+//character constant
+%token <charval> CHAR_CONSTANT
 
-    //declare the start non terminal
-%start translation_unit
-
-    //to store unary operator as character
-%type <unary_op> unary_operator
-
-    //useful for storing number of parameters
-%type <num_params> argument_expression_list argument_expression_listopt
+// string literals
+%token <str> STRING_LITERAL
 
 // Non-terminals of type expression
 %type <expr> 
@@ -153,132 +81,151 @@ void yyerror(string s);
         logical_or_expression
         conditional_expression
         assignment_expression
+        postfix_expression
+        unary_expression
+        cast_expression
         expression_statement
-
-// Non-terminals of type statement
-%type <stmt>
-        compound_statement
         statement
+        compound_statement
         selection_statement
         iteration_statement
         labeled_statement 
         jump_statement
-        block_item
-        block_item_list
-        block_item_listopt
-        loop_statement
+        blocationk_item
+        blocationk_item_list
+        initializer
+        M
+        N
 
-// pointer of type ST_entry_type 
-%type <symbol_type> pointer
+// Non-terminals for unary operator
+%type <charval> unary_operator
 
-//type ST_entry* i.e. pointers to symbol table entry 
-%type <idval> constant initializer
-%type <idval> direct_declarator init_declarator declarator
+// The pointer non-terminal 
+%type <intval> pointer
 
-// array data type
-%type <arr> postfix_expression unary_expression cast_expression
+// data type declarators
+%type <dtype> type_specifier declaration_specifiers
 
-//M marker to keep a track of next instruction during backpatching
-%type <inst_num> M
+// declartion type non terminals
+%type <dec> direct_declarator initializer_list init_declarator declarator function_prototype
 
-// Auxiliary non-terminal N of type stmt to help in control flow statements
-%type <stmt> N
+// list of declartions
+%type <decList> init_declarator_list
+
+// Non-terminals of type param
+%type <parameter> parameter_declaration
+
+// Non-terminals of type parameterList
+%type <parameterList> parameter_list parameter_type_list parameter_type_list_opt argument_expression_list
+
+// removes dangling else ambiguity
+%expect 1
+%nonassoc ELSE
+
+// The start state is translation_unit
+%start translation_unit
 
 %%
+
 primary_expression: 
         IDENTIFIER
         {
-            $$ = new expression();       // Create new expression
-            $$->location = $1;           // Store pointer to symbol table entry
-            $$->type = "non_bool";
+            $$ = new expression();                      // new expression node
+            string s = *($1);
+            ST->search_lexeme(s);                       //store the identifier in symbol table
+            $$->location = s;                           // s now points to the pointer to symbol table entry
         }
-        | constant
+        | INTEGER_CONSTANT
         {
-            $$ = new expression();       // Create new expression
-            $$->location = $1;           // Store pointer to symbol table entry
-        }
-        | STRING_LITERAL
-        {
-            $$ = new expression();      // Create new expression
-            // store the value of the string in a temporary variable
-            $$->location = symbol_table::generate_tem_var(new ST_entry_type("ptr"), $1);  
-            $$->location->type->derived_arr = new ST_entry_type("char");
-        }
-        | LEFT_PARENTHESES expression RIGHT_PARENTHESES
-        {
-            //copy the content of expression to primary_expression
-            $$ = $2;    
-        }
-        ;
-
-constant: //to handle constants of different
-        INTEGER_CONSTANT
-        {
-            // store the integer constant in a new temporary variable
-            $$ = symbol_table::generate_tem_var(new ST_entry_type("int"), convert_int_str($1));   
-            //idval = intnum
-            add_TAC("=", $$->name, $1);
+            $$ = new expression();                  // new expression node
+            $$->location = ST->generate_tem_var(INT);             // create a temporary variable to store the value
+            add_TAC($$->location, $1, ASSIGN);          //create a TAC quad to assign the value of constant to temporary variable
+            ST_entryValue* val = new ST_entryValue();
+            val->initialize($1);                        // intialise 
+            ST->search_lexeme($$->location)->initial_value = val;     // update the intial value of temporary variable
         }
         | FLOATING_CONSTANT
         {
-            //store the floating constant in a new temporary variable
-            $$ = symbol_table::generate_tem_var(new ST_entry_type("float"), string($1));
-            //idval = floatnum     
-            add_TAC("=", $$->name, string($1));
+            $$ = new expression();                  // new expression node
+            $$->location = ST->generate_tem_var(FLOAT);           //create a temporary variable to store the value
+            add_TAC($$->location, $1, ASSIGN);          //create a TAC quad to assign the value of constant to temporary variable
+            ST_entryValue* val = new ST_entryValue();
+            val->initialize($1);                    // // intialise 
+            ST->search_lexeme($$->location)->initial_value = val;      // update the intial value of temporary variable
         }
-        | CHARACTER_CONSTANT
+        | CHAR_CONSTANT
         {
-            //store the character constant in a new temporary variable
-            $$ = symbol_table::generate_tem_var(new ST_entry_type("float"), string($1));     
-            //idval = char
-            add_TAC("=", $$->name, string($1));
+            $$ = new expression();                  // new expression node
+            $$->location = ST->generate_tem_var(CHAR);            //create a temporary variable to store the value
+            add_TAC($$->location, $1, ASSIGN);  //create a TAC quad to assign the value of constant to temporary variable
+            ST_entryValue* val = new ST_entryValue();
+            val->initialize($1);                    // intialise 
+            ST->search_lexeme($$->location)->initial_value = val;      // update the intial value of temporary variable
+        }
+        | STRING_LITERAL
+        {
+            $$ = new expression();                          // new expression node
+            $$->location = ".LC" + to_string(num_strings++);//create a new string label with prefix LC that indicates string parameters in .s files
+            string_constants.push_back(*($1));          // update the number of strings, that will be used in naming label 
+                                                        //add the string to set of string constants
+        }
+        | LEFT_PARENTHESIS expression RIGHT_PARENTHESIS
+        {
+            $$ = $2;                                // copy content from right to left
         }
         ;
 
 postfix_expression: 
         primary_expression
-        {
-            //primary expression contains the relevant details of the array
-            //store these details in postfix_expression 
-            $$ = new array_data_type();                 // Create a new array
-            $$->array = $1->location;         // Store the location of the primary expression
-            $$->type = $1->location->type;              // Update the type of array
-            $$->location = $$->array;         //update the location
-        }
+        {}
         | postfix_expression LEFT_SQUARE expression RIGHT_SQUARE
         {
-            //to compute addresses of multi-dimensional array
-            $$ = new array_data_type();                  // Create a new array
-            $$->type = $1->type->derived_arr;            // Set the type equal to the element type
-            $$->array = $1->array;   // Copy the base
+            //to compute address of array
+            ST_entry_type to = ST->search_lexeme($1->location)->type;      // extract the type of variable
+            string f = "";
+            if(!($1->fold)) {
+                f = ST->generate_tem_var(INT);                       // Generate a new temporary variable
+                add_TAC(f, 0, ASSIGN);
+                $1->folder = new string(f);
+            }
+            string temp = ST->generate_tem_var(INT);
+
             
-            // Store the new temporary variable
-            $$->location = symbol_table::generate_tem_var(new ST_entry_type("int"));  
-            $$->arr_type = "arr";                        // Set arr_type to "arr"
-
-            if($1->arr_type == "arr") {      
-                //if postfix_expression is of type arr, [expression] would increase teh dimension of array  
-                // multiply the size of the type of subarray with the expression value
-
-                ST_entry* sym = symbol_table::generate_tem_var(new ST_entry_type("int"));
-                int size = type_sizeof($$->type);
-                
-                //a[i][j] = base + i*w1 + j*w2
-                add_TAC("*", sym->name, $3->location->name, convert_int_str(size));
-                add_TAC("+", $$->location->name, $1->location->name, sym->name);
-            }
-            else {                                       // if of the form id[E]
-                int size = type_sizeof($$->type);
-                add_TAC("*", $$->location->name, $3->location->name, convert_int_str(size));
-            }
+            add_TAC(temp, $3->location, "", ASSIGN);                //t = E.addr
+            add_TAC(temp, temp, "4", MULT);                         //t = t * 4
+            add_TAC(f, temp, "", ASSIGN);                           //f = t
+            $$ = $1;
         }
-        | postfix_expression LEFT_PARENTHESES argument_expression_listopt RIGHT_PARENTHESES
+        | postfix_expression LEFT_PARENTHESIS RIGHT_PARENTHESIS
+        {  
+             
+            //function call with the function name no parameter
+            symbol_table* function_ST = ST_global.search_lexeme($1->location)->nested_symbol_table;
+            add_TAC($1->location, "0", "", CALL);   //call func_name, 0
+        
+        }
+        | postfix_expression LEFT_PARENTHESIS argument_expression_list RIGHT_PARENTHESIS
         {   
+
             //function call with the function name and parameter list
-            $$ = new array_data_type();
-            $$->array = symbol_table::generate_tem_var($1->type);
-            //call func name, parameter count
-            add_TAC("call", $$->array->name, $1->array->name, convert_int_str($3));
+            symbol_table* function_ST = ST_global.search_lexeme($1->location)->nested_symbol_table;
+            vector<param*> parameters = *($3);                                      // Get the list of parameters
+            vector<ST_entry*> paramsList = function_ST->ST_entrys;
+
+            for(int i = 0; i < (int)parameters.size(); i++) {
+                add_TAC(parameters[i]->name, "", "", PARAM);                        //create a tac for each of the parameter
+            }
+
+            data_dtype return_type = function_ST->search_lexeme("RETVAL")->type.type;  // extract the return type of the function
+            if(return_type == VOID)                                                     // If the function returns void
+                add_TAC($1->location, (int)parameters.size(), CALL);                //tac would be like call func_name, param_num
+
+            else {                                                                  // If the function returns a value
+                string return_value = ST->generate_tem_var(return_type);                      //generate a temporary variable to store return value
+                add_TAC($1->location, to_string(parameters.size()), return_value, CALL);  //t = call func_name, paaram_num
+                $$ = new expression();
+                $$->location = return_value;                                              
+            }
         }
         | postfix_expression DOT IDENTIFIER
         {}
@@ -286,115 +233,162 @@ postfix_expression:
         {}
         | postfix_expression SELF_INCREASE
         {   
-            $$ = new array_data_type();
-            //create a new temp variable
-            $$->array = symbol_table::generate_tem_var($1->array->type);      
-            
             //for a++: t = a, a = t + 1
-            add_TAC("=", $$->array->name, $1->array->name);            // First assign the old value
-            add_TAC("+", $1->array->name, $1->array->name, "1");       // Then add 1
+            $$ = new expression();                                                          // new expression node
+            ST_entry_type t = ST->search_lexeme($1->location)->type;                       // generate a temporary vraiable of the same type as of the varible
+            
+            if(t.type == ARRAY) 
+            {   //if the type of variable is array
+                //ARR_R is like a = b[i]
+                //ARR_L is like a[i] = b            
+
+                $$->location = ST->generate_tem_var(ST->search_lexeme($1->location)->type.next_elem_type);
+                add_TAC($$->location, $1->location, *($1->folder), ARR_R); //assign the old value of $$
+                string temp = ST->generate_tem_var(t.next_elem_type);
+                add_TAC(temp, $1->location, *($1->folder), ARR_R);  //t = a[i]
+                add_TAC(temp, temp, "1", ADD);                      //t = t+1;
+                add_TAC($1->location, temp, *($1->folder), ARR_L);  //a[i] = t
+            }
+            else {
+                $$->location = ST->generate_tem_var(ST->search_lexeme($1->location)->type.type);
+                
+                //t = a++ i.e. t=a and a=a+1
+                add_TAC($$->location, $1->location, "", ASSIGN);                         // return the old value 
+                add_TAC($1->location, $1->location, "1", ADD);                           // then update the value by 1
+            }
         }
         | postfix_expression SELF_DECREASE
         {
-            $$ = new array_data_type();         
-            //create a new temp variable
-            $$->array = symbol_table::generate_tem_var($1->array->type);      
-            
-            //for a--: t = a, a = t-1
-            add_TAC("=", $$->array->name, $1->array->name);            // First assign the old value
-            add_TAC("-", $1->array->name, $1->array->name, "1");       // Then subtract 1
+            //follow similar to self increment
+            $$ = new expression();                                          // new expression node
+            $$->location = ST->generate_tem_var(ST->search_lexeme($1->location)->type.type);          // Generate a new temporary variable
+            ST_entry_type t = ST->search_lexeme($1->location)->type;
+            if(t.type == ARRAY) {
+                $$->location = ST->generate_tem_var(ST->search_lexeme($1->location)->type.next_elem_type);
+                string temp = ST->generate_tem_var(t.next_elem_type);
+                add_TAC(temp, $1->location, *($1->folder), ARR_R);
+                add_TAC($$->location, temp, "", ASSIGN);
+                add_TAC(temp, temp, "1", SUB);
+                add_TAC($1->location, temp, *($1->folder), ARR_L);
+            }
+            else {
+                $$->location = ST->generate_tem_var(ST->search_lexeme($1->location)->type.type);
+                add_TAC($$->location, $1->location, "", ASSIGN);                         // return the old value
+                add_TAC($1->location, $1->location, "1", SUB);                           // the update the value by decreasing by 1
+            }
         }
-        | LEFT_PARENTHESES type_name RIGHT_PARENTHESES LEFT_CURLY initializer_list RIGHT_CURLY
+        | LEFT_PARENTHESIS type_name RIGHT_PARENTHESIS LEFT_CURLY initializer_list RIGHT_CURLY
         {}
-        | LEFT_PARENTHESES type_name RIGHT_PARENTHESES LEFT_CURLY initializer_list COMMA RIGHT_CURLY
+        | LEFT_PARENTHESIS type_name RIGHT_PARENTHESIS LEFT_CURLY initializer_list COMMA RIGHT_CURLY
         {}
-        ;
-
-argument_expression_listopt: 
-        argument_expression_list
-        {
-            $$ = $1;    // assignment
-        }
-        |%empty
-        {
-            $$ = 0;     // No arguments i.e. 0/void
-        }
         ;
 
 argument_expression_list: 
         assignment_expression
         {
-            $$ = 1;                                  // one argument
-            add_TAC("param", $1->location->name);    // TAC: param parameter_1
+            param* first = new param();                     // Create a new parameter
+            first->name = $1->location;                     //param would point to the symbol tabel entry of the parameter
+            first->type = ST->search_lexeme($1->location)->type;//set the type of parameter
+            $$ = new vector<param*>;
+            $$->push_back(first);                       // Add the parameter to the list to keep track of all parameters
         }
         | argument_expression_list COMMA assignment_expression
         {
-            $$ = $1 + 1;                            // for the next parameter
-            add_TAC("param", $3->location->name);   // TAC: param parameter_i
+            //if there are more than first_operand parameters
+            param* next = new param();                  // Create a new parameter
+            next->name = $3->location;                  //set type and name of parameter
+            next->type = ST->search_lexeme(next->name)->type;
+            $$ = $1;
+            $$->push_back(next);                        // Add the parameter to the list created in the above production. this list would contain all parameters name relevant to a function
         }
         ;
 
 unary_expression: 
         postfix_expression
-        {
-            $$ = $1;      // copy the content
-        }
+        {}
         | SELF_INCREASE unary_expression
         {
-            //for ++a, a = a + 1
-            //pre increment so no need for temporary variable
-            add_TAC("+", $2->array->name, $2->array->name, "1");   // Add 1
-            $$ = $2;    // Assign
+            $$ = new expression();
+            ST_entry_type type = ST->search_lexeme($2->location)->type;
+            if(type.type == ARRAY) {
+                string t = ST->generate_tem_var(type.next_elem_type);
+                add_TAC(t, $2->location, *($2->folder), ARR_R); //t = a[i]
+                add_TAC(t, t, "1", ADD);                        //t = t+1
+                add_TAC($2->location, t, *($2->folder), ARR_L); //a[i] = t
+                $$->location = ST->generate_tem_var(ST->search_lexeme($2->location)->type.next_elem_type);
+            }
+            else {
+                add_TAC($2->location, $2->location, "1", ADD);                       // Increment the value
+                $$->location = ST->generate_tem_var(ST->search_lexeme($2->location)->type.type);
+            }
+            $$->location = ST->generate_tem_var(ST->search_lexeme($2->location)->type.type);
+            add_TAC($$->location, $2->location, "", ASSIGN);                         // Assign the updated value to $$
         }
         | SELF_DECREASE unary_expression
         {
-            //for --a, a = a - 1
-            //pre derement so no need for temporary variable
-            add_TAC("-", $2->array->name, $2->array->name, "1");   // Subtract 1
-            $$ = $2;    // Assign
+            $$ = new expression();
+            ST_entry_type type = ST->search_lexeme($2->location)->type;
+            if(type.type == ARRAY) {
+                string t = ST->generate_tem_var(type.next_elem_type);
+                add_TAC(t, $2->location, *($2->folder), ARR_R);
+                add_TAC(t, t, "1", SUB);
+                add_TAC($2->location, t, *($2->folder), ARR_L);
+                $$->location = ST->generate_tem_var(ST->search_lexeme($2->location)->type.next_elem_type);
+            }
+            else {
+                add_TAC($2->location, $2->location, "1", SUB);                       // Decrement the value
+                $$->location = ST->generate_tem_var(ST->search_lexeme($2->location)->type.type);
+            }
+            add_TAC($$->location, $2->location, "", ASSIGN);                         // Assign the updated value to $$
         }
         | unary_operator cast_expression
         {
-            
-            $$ = new array_data_type();
+            // handle different unary operator using switch
             
             switch($1) {
-                case '&':   // Used for addressing (&p)
-                    $$->array = symbol_table::generate_tem_var(new ST_entry_type("ptr"));    // Generate a pointer temporary
-                    $$->array->type->derived_arr = $2->array->type;                 // Assign corresponding type
-                    add_TAC("= &", $$->array->name, $2->array->name);              // generate the TAC quad
+                case '&':       // Address of variable i.e &n
+                    $$ = new expression();
+                    $$->location = ST->generate_tem_var(POINTER);                 // Generate temporary of the same data type i.e. pointer
+                    add_TAC($$->location, $2->location, "", REFERENCE);          // this would be a reference operator a = &n 
                     break;
-                
-                case '*':   // De-referencing eg *p
-                    $$->arr_type = "ptr";
-                    $$->location = symbol_table::generate_tem_var($2->array->type->derived_arr);   // Generate a temporary of the appropriate type
-                    $$->array = $2->array;                                      // Assign
-                    add_TAC("= *", $$->location->name, $2->array->name);                // generate the TAC quad
+                case '*':   // De-referencing
+                    $$ = new expression();
+                    $$->location = ST->generate_tem_var(INT);                       // Generate temporary of the same data type
+                    $$->fold = 1;                                                   //fold keeps a track of dimension
+                    $$->folder = new string($2->location);                          //folder keeps a track of expression address whose address is provided
+                    add_TAC($$->location, $2->location, "", DEREFERENCE);           // generate TAC quad a = *n
                     break;
-                
-                case '+':   // Unary plus eg +2
-                    $$ = $2;   //transfer the content
+                case '-':   // Unary minus
+                    $$ = new expression();
+                    $$->location = ST->generate_tem_var();                        // Generate temporary of the same data type
+                    add_TAC($$->location, $2->location, "", U_MINUS);            // generate TAC quad
+                    //$$ = -$2
                     break;
-                
-                case '-':   // Unary minus eg -2 apply the operator on cast_expression
-                    $$->array = symbol_table::generate_tem_var(new ST_entry_type($2->array->type->type));    // Generate temporary of the same base type
-                    add_TAC("= -", $$->array->name, $2->array->name);                              // generate the TAC quad
-                    break;
-                
-                case '~':   // Bitwise not apply the operator on cast_expression
-                    $$->array = symbol_table::generate_tem_var(new ST_entry_type($2->array->type->type));    // Generate temporary of the same base type
-                    add_TAC("= ~", $$->array->name, $2->array->name);                              // generate the TAC quad
-                    break;
-                
-                case '!':   // Logical not apply the operator on cast_expression
-                    $$->array = symbol_table::generate_tem_var(new ST_entry_type($2->array->type->type));    // Generate temporary of the same base type
-                    add_TAC("= !", $$->array->name, $2->array->name);                              // generate the TAC quad
+                case '!':   // Logical not 
+                    $$ = new expression();
+                    $$->location = ST->generate_tem_var(INT);                     // Generate temporary of the same data type
+                    int temp = next_instruction + 2;
+                    add_TAC(to_string(temp), $2->location, "0", GOTO_EQ);   
+                    temp = next_instruction + 3;                            
+                    add_TAC(to_string(temp), "", "", GOTO);                 
+                    add_TAC($$->location, "1", "", ASSIGN);                 
+                    temp = next_instruction + 2;
+                    add_TAC(to_string(temp), "", "", GOTO);
+                    add_TAC($$->location, "0", "", ASSIGN);
                     break;
             }
+            /*
+                in: if $2==0 goto in+2
+                in+1: goto in+3
+                in+2: $$ = 1
+                in+3: goto in+4
+                in+4: $$ = 0
+            */
+
         }
         | SIZEOF unary_expression
         {}
-        | SIZEOF LEFT_PARENTHESES type_name RIGHT_PARENTHESES
+        | SIZEOF LEFT_PARENTHESIS type_name RIGHT_PARENTHESIS
         {}
         ;
 
@@ -411,9 +405,13 @@ unary_operator:
         {
             $$ = '+';
         }
-        | MINUS
+        | SUBTRACT
         {
             $$ = '-';
+        }
+        | BITWISE_NOR
+        {
+            $$ = '~';
         }
         | EXCLAMATION
         {
@@ -422,18 +420,10 @@ unary_operator:
         ;
 
 cast_expression: 
-    //typecasting
         unary_expression
-        {
-            $$ = $1;    // copy the content
-        }
-        | LEFT_PARENTHESES type_name RIGHT_PARENTHESES cast_expression
-        {
-            //(float)expression
-            $$ = new array_data_type();
-            // convert the type depending upon type_name
-            $$->array = convert_type($4->array, prev_var);    
-        }
+        {}
+        | LEFT_PARENTHESIS type_name RIGHT_PARENTHESIS cast_expression
+        {}
         ;
 
 /*
@@ -443,139 +433,242 @@ and width of the array. temporary variables storing the appropriate address woul
 else for normal variables directly assign the values
 */
 
+
 multiplicative_expression: 
         cast_expression
         {
-            $$ = new expression();                  // Generate new expression
-            if($1->arr_type == "arr") {             // arr_type "arr"
+            $$ = new expression();                                  // Generate new expression
+            ST_entry_type tp = ST->search_lexeme($1->location)->type;
+            if(tp.type == ARRAY) {                                      // If the type is an array
+                
                 // Generate new temporary variable to store the value of array at the index
-                $$->location = symbol_table::generate_tem_var($1->location->type); 
-                
-                //temp = array [ addr ]
-                add_TAC("=[]", $$->location->name, $1->array->name, $1->location->name);     // generate the TAC quad
+                string t = ST->generate_tem_var(tp.next_elem_type);                // Generate a temporary
+                if($1->folder != NULL) {
+                    add_TAC(t, $1->location, *($1->folder), ARR_R);   
+                    $1->location = t;                                 
+                    $1->type = tp.next_elem_type; 
+                    $$ = $1;
+                }
+                else
+                    $$ = $1;        // copy content from right to left
             }
-            else if($1->arr_type == "ptr") {          // variable type "ptr"
-                
-                $$->location = $1->location;          // Assign the pointer to symbol table directly
-                //the above instruction is just like copy statement  
-            }
-            else {
-                
-                $$->location = $1->array;   //assign the pointers directly for all other variables
-            }
+            else
+                $$ = $1;            // copy content from right to left
         }
         | multiplicative_expression MUL cast_expression
         {   
+            // Indicates multiplication
             // Arithmetic operation requires both the operands to be of compatible type 
-            if(typecheck($1->location, $3->array)) { 
-                // Generate new expression    
-                $$ = new expression();                                                  
+            $$ = new expression();
+            ST_entry* first_operand = ST->search_lexeme($1->location);                      // Get the first operand from the ST_entry table
+            ST_entry* second_operand = ST->search_lexeme($3->location);                     // Get the second operand from the ST_entry table
+            if(second_operand->type.type == ARRAY) {                                        // If the second operand is an array, perform necessary operations 
+            
+            //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed
                 
-                //create a new temporary variable to store the product
-                $$->location = symbol_table::generate_tem_var(new ST_entry_type($1->location->type->type));    // Generate new temporary
-                add_TAC("*", $$->location->name, $1->location->name, $3->array->name);                         // generate the TAC quad
+                string t = ST->generate_tem_var(second_operand->type.next_elem_type);
+                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                $3->location = t;
+                $3->type = second_operand->type.next_elem_type;
             }
-            else {
-                //if the operands aren't compatible return error
-                yyerror("Type Mismatch");
+            if(first_operand->type.type == ARRAY) {                       // If the first operand is an array, perform necessary operations
+
+                //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed
+                string t = ST->generate_tem_var(first_operand->type.next_elem_type);
+                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                $1->location = t;
+                $1->type = first_operand->type.next_elem_type;            //next_elem_type keeps the type of elements pointer by pointer or array
             }
+
+            // data type of result of the multiplication will depend upon relative precedance of data type of both operands 
+            //assign data type after appropriate typecasting
+            data_dtype final = ((first_operand->type.type > second_operand->type.type) ? (first_operand->type.type) : (second_operand->type.type));
+            $$->location = ST->generate_tem_var(final);                       // Store the final result in a temporary
+            add_TAC($$->location, $1->location, $3->location, MULT);
         }
         | multiplicative_expression F_SLASH cast_expression
         {
-            // Division operation require both operands to be type compatible
-            if(typecheck($1->location, $3->array)) {
-                // Generate new expression    
-                $$ = new expression();    
-
-                //create a temporary variable to store the quotient 
-
-                                                          
-                $$->location = symbol_table::generate_tem_var(new ST_entry_type($1->location->type->type));    // Generate new temporary
-                add_TAC("/", $$->location->name, $1->location->name, $3->array->name);                         // generate the TAC quad
+            // Indicates division
+            $$ = new expression();
+            ST_entry* first_operand = ST->search_lexeme($1->location);                  // Get the first operand from the ST_entry table
+            ST_entry* second_operand = ST->search_lexeme($3->location);                  // Get the second operand from the ST_entry table
+            if(second_operand->type.type == ARRAY) {                       // If the second operand is an array, perform necessary operations
+                
+                //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed
+                
+                string t = ST->generate_tem_var(second_operand->type.next_elem_type);
+                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                $3->location = t;
+                $3->type = second_operand->type.next_elem_type;
             }
-            else {
-                yyerror("Type Mismatch");
+            if(first_operand->type.type == ARRAY) {                       // If the first operand is an array, perform necessary operations
+
+                //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed
+                string t = ST->generate_tem_var(first_operand->type.next_elem_type);
+                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                $1->location = t;
+                $1->type = first_operand->type.next_elem_type;
             }
+
+            //assign data type after appropriate typecasting
+            data_dtype final = ((first_operand->type.type > second_operand->type.type) ? (first_operand->type.type) : (second_operand->type.type));
+            $$->location = ST->generate_tem_var(final);                       // Store the final result in a temporary
+            add_TAC($$->location, $1->location, $3->location, DIV);
         }
         | multiplicative_expression MODULO cast_expression
         {
-            // modulo
+            // Indicates modulo
+            $$ = new expression();
+            ST_entry* first_operand = ST->search_lexeme($1->location);                  // Get the first operand from the ST_entry table
+            ST_entry* second_operand = ST->search_lexeme($3->location);                  // Get the second operand from the ST_entry table
             
-            if(typecheck($1->location, $3->array)) {                                                            // Check for type compatibility
-                $$ = new expression();                                                                          // Generate new expression
-                $$->location = symbol_table::generate_tem_var(new ST_entry_type($1->location->type->type));     // Generate new temporary
-                add_TAC("%", $$->location->name, $1->location->name, $3->array->name);                          // generate the TAC quad
+            if(second_operand->type.type == ARRAY) {                       // If the second operand is an array, perform necessary operations
+                
+                //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed
+                
+                string t = ST->generate_tem_var(second_operand->type.next_elem_type);
+                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                $3->location = t;
+                $3->type = second_operand->type.next_elem_type;
             }
-            else {
-                yyerror("Type Mismatch");
+            
+            if(first_operand->type.type == ARRAY) {                       // If the first operand is an array, perform necessary operations
+                
+                //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed
+                string t = ST->generate_tem_var(first_operand->type.next_elem_type);
+                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                $1->location = t;
+                $1->type = first_operand->type.next_elem_type;
             }
+
+            // Assign the data type after suitable typecasting
+            data_dtype final = ((first_operand->type.type > second_operand->type.type) ? (first_operand->type.type) : (second_operand->type.type));
+            $$->location = ST->generate_tem_var(final);                       // Store the final result in a temporary
+            add_TAC($$->location, $1->location, $3->location, MOD);
         }
         ;
 
 additive_expression: 
         multiplicative_expression
-        {
-            $$ = $1;                                                                                             //transfer the content
-        }
+        {}
         | additive_expression PLUS multiplicative_expression
         {   
-            // addition
-            // Check for type compatibility
-            if(typecheck($1->location, $3->location)) {       
-                $$ = new expression();                                                                          // Generate new expression
-                $$->location = symbol_table::generate_tem_var(new ST_entry_type($1->location->type->type));     // Generate new temporary
+            // Indicates addition
+            $$ = new expression();
+            ST_entry* first_operand = ST->search_lexeme($1->location);                  // Get the first operand from the ST_entry table
+            ST_entry* second_operand = ST->search_lexeme($3->location);                  // Get the second operand from the ST_entry table
+            
+            if(second_operand->type.type == ARRAY) {                       // If the second operand is an array, perform necessary operations
                 
-                add_TAC("+", $$->location->name, $1->location->name, $3->location->name);                       // generate the TAC quad
+                //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed
+                
+                string t = ST->generate_tem_var(second_operand->type.next_elem_type);
+                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                $3->location = t;
+                $3->type = second_operand->type.next_elem_type;
             }
-            else {
-                yyerror("Type Mismatch");
+            if(first_operand->type.type == ARRAY) {                       // If the first operand is an array, perform necessary operations
+                
+                //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed
+                string t = ST->generate_tem_var(first_operand->type.next_elem_type);
+                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                $1->location = t;
+                $1->type = first_operand->type.next_elem_type;
             }
+
+            // Assign the data type after appropriate type casting
+            data_dtype final = ((first_operand->type.type > second_operand->type.type) ? (first_operand->type.type) : (second_operand->type.type));
+            $$->location = ST->generate_tem_var(final);                       // Store the final result in a temporary
+            add_TAC($$->location, $1->location, $3->location, ADD);
         }
-        | additive_expression MINUS multiplicative_expression
+        | additive_expression SUBTRACT multiplicative_expression
         {
-            // subtraction
-            if(typecheck($1->location, $3->location)) {                                                         // Check for type compatibility
-                $$ = new expression();                                                                          // Generate new expression
-                $$->location = symbol_table::generate_tem_var(new ST_entry_type($1->location->type->type));     // Generate new temporary
-                add_TAC("-", $$->location->name, $1->location->name, $3->location->name);                       // generate the TAC quad
+            // Indicates subtraction
+            $$ = new expression();
+            ST_entry* first_operand = ST->search_lexeme($1->location);                  // Get the first operand from the ST_entry table
+            ST_entry* second_operand = ST->search_lexeme($3->location);                  // Get the second operand from the ST_entry table
+            if(second_operand->type.type == ARRAY) {                       // If the second operand is an array, perform necessary operations
+                
+                //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed
+                
+                string t = ST->generate_tem_var(second_operand->type.next_elem_type);
+                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                $3->location = t;
+                $3->type = second_operand->type.next_elem_type;
             }
-            else {
-                yyerror("Type Mismatch");
+            if(first_operand->type.type == ARRAY) {                       // If the first operand is an array, perform necessary operations
+                
+                //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
+                string t = ST->generate_tem_var(first_operand->type.next_elem_type);
+                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                $1->location = t;
+                $1->type = first_operand->type.next_elem_type;
             }
+
+            // Assign the data type after appropriate type casting
+            data_dtype final = ((first_operand->type.type > second_operand->type.type) ? (first_operand->type.type) : (second_operand->type.type));
+            $$->location = ST->generate_tem_var(final);                       // Store the final result in a temporary
+            add_TAC($$->location, $1->location, $3->location, SUB);
         }
         ;
 
 shift_expression: 
         additive_expression
-        {
-            $$ = $1;                                                                                            //transfer the content
-        }
+        {}
         | shift_expression LEFT_SHIFT additive_expression
         {
-            // left shift
-            if($3->location->type->type == "int") {                                                             // Check for type compatibility (int)
-                $$ = new expression();                                                                          // Generate new expression
-                $$->location = symbol_table::generate_tem_var(new ST_entry_type("int"));                        // Generate new temporary
-                add_TAC("<<", $$->location->name, $1->location->name, $3->location->name);                      // generate the TAC quad
+            // Indicates left shift
+            $$ = new expression();
+            ST_entry* first_operand = ST->search_lexeme($1->location);                  // Get the first operand from the ST_entry table
+            ST_entry* second_operand = ST->search_lexeme($3->location);                  // Get the second operand from the ST_entry table
+            if(second_operand->type.type == ARRAY) {                       // If the second operand is an array, perform necessary operations
+                
+                   //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
+                
+                string t = ST->generate_tem_var(second_operand->type.next_elem_type);
+                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                $3->location = t;
+                $3->type = second_operand->type.next_elem_type;
             }
-            else {
-                yyerror("Type Mismatch");
+            if(first_operand->type.type == ARRAY) {                       // If the first operand is an array, perform necessary operations
+
+                   //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
+                string t = ST->generate_tem_var(first_operand->type.next_elem_type);
+                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                $1->location = t;
+                $1->type = first_operand->type.next_elem_type;
             }
+            $$->location = ST->generate_tem_var(first_operand->type.type);              // data type remains the same after shifting
+            add_TAC($$->location, $1->location, $3->location, SL);
         }
         | shift_expression RIGHT_SHIFT additive_expression
         {
-            // right shift
-            if($3->location->type->type == "int") {                                                             // Check for type compatibility (int)
-                $$ = new expression();                                                                          // Generate new expression
-                $$->location = symbol_table::generate_tem_var(new ST_entry_type("int"));                        // Generate new temporary
-                add_TAC(">>", $$->location->name, $1->location->name, $3->location->name);                      // generate the TAC quad
+            // Indicates right shift
+            $$ = new expression();
+            ST_entry* first_operand = ST->search_lexeme($1->location);                  // Get the first operand from the ST_entry table
+            ST_entry* second_operand = ST->search_lexeme($3->location);                  // Get the second operand from the ST_entry table
+            
+            if(second_operand->type.type == ARRAY) {                       // If the second operand is an array, perform necessary operations
+                
+                   //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
+                
+                string t = ST->generate_tem_var(second_operand->type.next_elem_type);
+                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                $3->location = t;
+                $3->type = second_operand->type.next_elem_type;
             }
-            else {
-                yyerror("Type Mismatch");
+            if(first_operand->type.type == ARRAY) {                       // If the first operand is an array, perform necessary operations
+                
+                   //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
+                string t = ST->generate_tem_var(first_operand->type.next_elem_type);
+                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                $1->location = t;
+                $1->type = first_operand->type.next_elem_type;
             }
+            $$->location = ST->generate_tem_var(first_operand->type.type);              //data type remains the same after right shift
+            add_TAC($$->location, $1->location, $3->location, SR);
         }
         ;
-
 /*
 
 next set of instructions involve boolean expressions. 
@@ -584,214 +677,383 @@ boolean expressions have attributes truelist and falselist which will be backpat
 
 relational_expression: 
         shift_expression
-        {
-            $$ = $1;                                                                                            //transfer the content
-        }
+        {}
         | relational_expression LESS_THAN shift_expression
         {
-            if(typecheck($1->location, $3->location)) {                                                         // Check for type compatibility
-                $$ = new expression();                                                                          // Generate new boolean expression
-                $$->type = "bool";                                                                              //synthesized attributes truelist and falselist
-                $$->truelist = makelist(next_instr_count());                                                    // Create truelist for boolean expression
-                $$->falselist = makelist(next_instr_count() + 1);                                               // Create falselist for boolean expression
-                add_TAC("<", "", $1->location->name, $3->location->name);                                       // generate TAC code "if x < y goto ..."
-                add_TAC("goto", "");                                                                            // generate TAC code "goto ..."
+            $$ = new expression();
+            ST_entry* first_operand = ST->search_lexeme($1->location);                      // Get the first operand from the ST_entry table
+            ST_entry* second_operand = ST->search_lexeme($3->location);                     // Get the second operand from the ST_entry table
+            if(second_operand->type.type == ARRAY) {                                        // If the second operand is an array, perform necessary operations
+                
+                //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
+                
+                string t = ST->generate_tem_var(second_operand->type.next_elem_type);
+                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                $3->location = t;
+                $3->type = second_operand->type.next_elem_type;
             }
-            else {
-                yyerror("Type Mismatch");
+           
+            if(first_operand->type.type == ARRAY) {                       // If the first operand is an array, perform necessary operations
+                
+                   //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
+                string t = ST->generate_tem_var(first_operand->type.next_elem_type);
+                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                $1->location = t;
+                $1->type = first_operand->type.next_elem_type;
             }
+            $$ = new expression();
+            $$->location = ST->generate_tem_var();
+            $$->type = BOOL;                                    // Assign the result of the relational expression to a boolean type
+            add_TAC($$->location, "1", "", ASSIGN);
+            
+            $$->truelist = makelist(next_instruction);                 //backpatching
+            add_TAC("", $1->location, $3->location, GOTO_LT);               
+            add_TAC($$->location, "0", "", ASSIGN);
+            $$->falselist = makelist(next_instruction);                //backpatching
+            add_TAC("", "", "", GOTO);                            
+            /*
+                in: $$ = 1
+                in+1: if $1 < $3 goto (to be backpatched) i.e. $$ will stay 1 and we will jump to truelist
+                in+2: $$ = 0                            else $$ set to 0 and we jump to falselist
+                in+3: goto (to be backpatched)
+            */
+        
+        
         }
         | relational_expression GREATER_THAN shift_expression
         {
-            if(typecheck($1->location, $3->location)) {                                                         // Check for type compatibility
-                $$ = new expression();                                                                          // Generate new boolean expression
-                $$->type = "bool";
-                $$->truelist = makelist(next_instr_count());                                                    // Create truelist for boolean expression
-                $$->falselist = makelist(next_instr_count() + 1);                                               // Create falselist for boolean expression
-                add_TAC(">", "", $1->location->name, $3->location->name);                                       // generate TAC "if x > y goto ..."
-                add_TAC("goto", "");                                                                            // generate TAC "goto ..."
+            $$ = new expression();
+            ST_entry* first_operand = ST->search_lexeme($1->location);                  // Get the first operand from the ST_entry table
+            ST_entry* second_operand = ST->search_lexeme($3->location);                  // Get the second operand from the ST_entry table
+            if(second_operand->type.type == ARRAY) {                                      // If the second operand is an array, perform necessary operations
+                
+                //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed
+                string t = ST->generate_tem_var(second_operand->type.next_elem_type);
+                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                $3->location = t;
+                $3->type = second_operand->type.next_elem_type;
             }
-            else {
-                yyerror("Type Mismatch");
+            if(first_operand->type.type == ARRAY) {                       // If the first operand is an array, perform necessary operations
+                
+                //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed
+                string t = ST->generate_tem_var(first_operand->type.next_elem_type);
+                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                $1->location = t;
+                $1->type = first_operand->type.next_elem_type;
             }
+            $$ = new expression();
+            $$->location = ST->generate_tem_var();
+            $$->type = BOOL;                                    // Assign the result of the relational expression to a boolean
+            add_TAC($$->location, "1", "", ASSIGN);
+            $$->truelist = makelist(next_instruction);                 // backpatching
+            add_TAC("", $1->location, $3->location, GOTO_GT);               
+            add_TAC($$->location, "0", "", ASSIGN);
+            $$->falselist = makelist(next_instruction);                //backpatching
+            add_TAC("", "", "", GOTO);                             
+
+            /*
+                in: $$ = 1
+                in+1: if $1 > $3 goto (to be backpatched) i.e. $$ will stay 1 and we will jump to truelist
+                in+2: $$ = 0                            else $$ set to 0 and we jump to falselist
+                in+3: goto (to be backpatched)
+            */
         }
         | relational_expression LESS_THAN_EQUAL shift_expression
         {
-            if(typecheck($1->location, $3->location)) {                                                          // Check for type compatibility
-                $$ = new expression();                                                                           // Generate new boolean expression
-                $$->type = "bool";
-                $$->truelist = makelist(next_instr_count());                                                     // Create truelist for boolean expression
-                $$->falselist = makelist(next_instr_count() + 1);                                                // Create falselist for boolean expression
-                add_TAC("<=", "", $1->location->name, $3->location->name);                                       // generate TAC "if x <= y goto ..."
-                add_TAC("goto", "");                                                                             // generate TAC "goto ..."
+            $$ = new expression();
+            ST_entry* first_operand = ST->search_lexeme($1->location);                  // Get the first operand from the ST_entry table
+            ST_entry* second_operand = ST->search_lexeme($3->location);                  // Get the second operand from the ST_entry table
+            if(second_operand->type.type == ARRAY) {                       // If the second operand is an array, perform necessary operations
+                
+                //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
+                string t = ST->generate_tem_var(second_operand->type.next_elem_type);
+                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                $3->location = t;
+                $3->type = second_operand->type.next_elem_type;
             }
-            else {
-                yyerror("Type Mismatch");
+            if(first_operand->type.type == ARRAY) {                       // If the first operand is an array, perform necessary operations
+                
+                //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
+                string t = ST->generate_tem_var(first_operand->type.next_elem_type);
+                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                $1->location = t;
+                $1->type = first_operand->type.next_elem_type;
             }
+            $$ = new expression();
+            $$->location = ST->generate_tem_var();
+            $$->type = BOOL;                                    // Assign the result of the relational expression to a boolean
+            add_TAC($$->location, "1", "", ASSIGN);
+            $$->truelist = makelist(next_instruction);                 // backpatching
+            add_TAC("", $1->location, $3->location, GOTO_LTE);               // Emit "if x <= y goto ..."
+            add_TAC($$->location, "0", "", ASSIGN);
+            $$->falselist = makelist(next_instruction);                //backpatching
+            add_TAC("", "", "", GOTO);                             
+             /*
+                in: $$ = 1
+                in+1: if $1 <= $3 goto (to be backpatched) i.e. $$ will stay 1 and we will jump to truelist
+                in+2: $$ = 0                            else $$ set to 0 and we jump to falselist
+                in+3: goto (to be backpatched)
+            */
+        
+        
         }
         | relational_expression GREATER_THAN_EQUAL shift_expression
         {
-            if(typecheck($1->location, $3->location)) {                                                         // Check for type compatibility
-                $$ = new expression();                                                                          // Generate new boolean expression
-                $$->type = "bool";
-                $$->truelist = makelist(next_instr_count());                                                    // Create truelist for boolean expression
-                $$->falselist = makelist(next_instr_count() + 1);                                               // Create falselist for boolean expression
-                add_TAC(">=", "", $1->location->name, $3->location->name);                                      // generate TAC "if x >= y goto ..."
-                add_TAC("goto", "");                                                                            // generate TAC "goto ..."
+            $$ = new expression();
+            ST_entry* first_operand = ST->search_lexeme($1->location);                  // Get the first operand from the ST_entry table
+            ST_entry* second_operand = ST->search_lexeme($3->location);                  // Get the second operand from the ST_entry table
+            if(second_operand->type.type == ARRAY) {                       // If the second operand is an array, perform necessary operations
+                
+                //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
+                string t = ST->generate_tem_var(second_operand->type.next_elem_type);
+                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                $3->location = t;
+                $3->type = second_operand->type.next_elem_type;
             }
-            else {
-                yyerror("Type Mismatch");
+            if(first_operand->type.type == ARRAY) {                       // If the first operand is an array, perform necessary operations
+                
+                //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
+                string t = ST->generate_tem_var(first_operand->type.next_elem_type);
+                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                $1->location = t;
+                $1->type = first_operand->type.next_elem_type;
             }
+            $$ = new expression();
+            $$->location = ST->generate_tem_var();
+            $$->type = BOOL;                                    // Assign the result of the relational expression to a boolean
+            add_TAC($$->location, "1", "", ASSIGN);
+            $$->truelist = makelist(next_instruction);                 // backpatching
+            add_TAC("", $1->location, $3->location, GOTO_GTE);               // Emit "if x >= y goto ..."
+            add_TAC($$->location, "0", "", ASSIGN);
+            $$->falselist = makelist(next_instruction);                //backpatching
+            add_TAC("", "", "", GOTO);                             
+             /*
+                in: $$ = 1
+                in+1: if $1 >= $3 goto (to be backpatched) i.e. $$ will stay 1 and we will jump to truelist
+                in+2: $$ = 0                            else $$ set to 0 and we jump to falselist
+                in+3: goto (to be backpatched)
+            */
+        
         }
         ;
 
 equality_expression: 
         relational_expression
         {
-            $$ = $1;                                                                                            //transfer the content
+            $$ = new expression();
+            $$ = $1;                // copy content from right to left
         }
         | equality_expression EQUAL relational_expression
         {
-            if(typecheck($1->location, $3->location)) {                                                         // Check for type compatibility
-                convert_bool_int($1);                                                                           // Convert bool to int
-                convert_bool_int($3);
-                $$ = new expression();                                                                          // Generate new boolean expression
-                $$->type = "bool";
-                $$->truelist = makelist(next_instr_count());                                                    // Create truelist for boolean expression
-                $$->falselist = makelist(next_instr_count() + 1);                                               // Create falselist for boolean expression
-                add_TAC("==", "", $1->location->name, $3->location->name);                                      // generate TAC "if x == y goto ..."
-                add_TAC("goto", "");                                                                            // generate TAC "goto ..."
+            $$ = new expression();
+            ST_entry* first_operand = ST->search_lexeme($1->location);                  // Get the first operand from the ST_entry table
+            ST_entry* second_operand = ST->search_lexeme($3->location);                  // Get the second operand from the ST_entry table
+            if(second_operand->type.type == ARRAY) {                       // If the second operand is an array, perform necessary operations
+                
+                //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
+                string t = ST->generate_tem_var(second_operand->type.next_elem_type);
+                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                $3->location = t;
+                $3->type = second_operand->type.next_elem_type;
             }
-            else {
-                yyerror("Type Mismatch");
+            if(first_operand->type.type == ARRAY) {                       // If the first operand is an array, perform necessary operations
+                
+                //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
+                string t = ST->generate_tem_var(first_operand->type.next_elem_type);
+                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                $1->location = t;
+                $1->type = first_operand->type.next_elem_type;
             }
+            $$ = new expression();
+            $$->location = ST->generate_tem_var();
+            $$->type = BOOL;                                    // Assign the result of the relational expression to a boolean
+            add_TAC($$->location, "1", "", ASSIGN);
+            $$->truelist = makelist(next_instruction);                 // backpatching
+            add_TAC("", $1->location, $3->location, GOTO_EQ);                
+            add_TAC($$->location, "0", "", ASSIGN);
+            $$->falselist = makelist(next_instruction);                //backpatching
+            add_TAC("", "", "", GOTO);                             
+            /*
+                in: $$ = 1
+                in+1: if $1 == $3 goto (to be backpatched) i.e. $$ will stay 1 and we will jump to truelist
+                in+2: $$ = 0                            else $$ set to 0 and we jump to falselist
+                in+3: goto (to be backpatched)
+            */
+        
         }
         | equality_expression NOT_EQUAL relational_expression
         {
-            if(typecheck($1->location, $3->location)) {                                                         // Check for type compatibility
-                convert_bool_int($1);                                                                           // Convert bool to int
-                convert_bool_int($3);
-                $$ = new expression();                                                                          // Generate new boolean expression
-                $$->type = "bool";
-                $$->truelist = makelist(next_instr_count());                                                    // Create truelist for boolean expression
-                $$->falselist = makelist(next_instr_count() + 1);                                               // Create falselist for boolean expression
-                add_TAC("!=", "", $1->location->name, $3->location->name);                                      // generate TAC "if x != y goto ..."
-                add_TAC("goto", "");                                                                            // generate TAC "goto ..."
+            $$ = new expression();
+            ST_entry* first_operand = ST->search_lexeme($1->location);                  // Get the first operand from the ST_entry table
+            ST_entry* second_operand = ST->search_lexeme($3->location);                  // Get the second operand from the ST_entry table
+            if(second_operand->type.type == ARRAY) {                       // If the second operand is an array, perform necessary operations
+                
+                //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
+                string t = ST->generate_tem_var(second_operand->type.next_elem_type);
+                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                $3->location = t;
+                $3->type = second_operand->type.next_elem_type;
             }
-            else {
-                yyerror("Type Mismatch");
+            if(first_operand->type.type == ARRAY) {                       // If the first operand is an array, perform necessary operations
+                
+                //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
+                string t = ST->generate_tem_var(first_operand->type.next_elem_type);
+                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                $1->location = t;
+                $1->type = first_operand->type.next_elem_type;
             }
+            $$ = new expression();
+            $$->location = ST->generate_tem_var();
+            $$->type = BOOL;                                    // Assign the result of the relational expression to a boolean
+            add_TAC($$->location, "1", "", ASSIGN);
+            $$->truelist = makelist(next_instruction);                 // backpatching
+            add_TAC("", $1->location, $3->location, GOTO_NEQ);               
+            add_TAC($$->location, "0", "", ASSIGN);
+            $$->falselist = makelist(next_instruction);                //backpatching
+            add_TAC("", "", "", GOTO);                             
+            /*
+                in: $$ = 1
+                in+1: if $1 != $3 goto (to be backpatched) i.e. $$ will stay 1 and we will jump to truelist
+                in+2: $$ = 0                            else $$ set to 0 and we jump to falselist
+                in+3: goto (to be backpatched)
+            */
         }
         ;
+
 /*
-the next set of transaltions involve converting expressions to int/non-boolean type,
+the next set of translations involve converting expressions to int/non-boolean type,
 thus, truelist and falselist attributes now become invalid
 a new temporary variable is generated to store the result of the intermediate operations
 */
 
-
 and_expression: 
         equality_expression
-        {
-            $$ = $1;                                                                                             //transfer the content
-        }
+        {}
         | and_expression BITWISE_AND equality_expression
         {
-            if(typecheck($1->location, $3->location)) {                                                         // Check for type compatibility
-                convert_bool_int($1);                                                                           // Convert bool to int
-                convert_bool_int($3);
-                $$ = new expression();
-                $$->type = "not_bool";                                                                          // The new result is not bool
-                $$->location = symbol_table::generate_tem_var(new ST_entry_type("int"));                        // Create a new temporary
-                add_TAC("&", $$->location->name, $1->location->name, $3->location->name);                       // generate the TAC quad
+            $$ = new expression();
+            ST_entry* first_operand = ST->search_lexeme($1->location);                  // Get the first operand from the ST_entry table
+            ST_entry* second_operand = ST->search_lexeme($3->location);                  // Get the second operand from the ST_entry table
+            if(second_operand->type.type == ARRAY) {                       // If the second operand is an array, perform necessary operations
+                
+                //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
+                string t = ST->generate_tem_var(second_operand->type.next_elem_type);
+                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                $3->location = t;
+                $3->type = second_operand->type.next_elem_type;
             }
-            else {
-                yyerror("Type Mismatch");
+            if(first_operand->type.type == ARRAY) {                       // If the first operand is an array, perform necessary operations
+                
+                //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
+                string t = ST->generate_tem_var(first_operand->type.next_elem_type);
+                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                $1->location = t;
+                $1->type = first_operand->type.next_elem_type;
             }
+            $$ = new expression();
+            $$->location = ST->generate_tem_var();                            // Create a temporary variable to store the result
+            add_TAC($$->location, $1->location, $3->location, BW_AND);            // generate TAC quad
+            // $$  = $1 & $3
         }
         ;
 
 exclusive_or_expression: 
         and_expression
         {
-            $$ = $1;                                                                                            //transfer the content
+            $$ = $1;    // copy content from right to left
         }
         | exclusive_or_expression BITWISE_XOR and_expression
         {
-            if(typecheck($1->location, $3->location)) {                                                         // Check for type compatibility
-                convert_bool_int($1);                                                                           // Convert bool to int
-                convert_bool_int($3);
-                $$ = new expression();
-                $$->type = "not_bool";                                                                          // The new result is not bool
-                $$->location = symbol_table::generate_tem_var(new ST_entry_type("int"));                        // Create a new temporary
-                add_TAC("^", $$->location->name, $1->location->name, $3->location->name);                       // generate the TAC quad
+            $$ = new expression();
+            ST_entry* first_operand = ST->search_lexeme($1->location);                  // Get the first operand from the ST_entry table
+            ST_entry* second_operand = ST->search_lexeme($3->location);                  // Get the second operand from the ST_entry table
+            if(second_operand->type.type == ARRAY) {                       // If the second operand is an array, perform necessary operations
+                
+                //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
+                string t = ST->generate_tem_var(second_operand->type.next_elem_type);
+                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                $3->location = t;
+                $3->type = second_operand->type.next_elem_type;
             }
-            else {
-                yyerror("Type Mismatch");
+            if(first_operand->type.type == ARRAY) {                       // If the first operand is an array, perform necessary operations
+                
+                //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
+                string t = ST->generate_tem_var(first_operand->type.next_elem_type);
+                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                $1->location = t;
+                $1->type = first_operand->type.next_elem_type;
             }
+            $$ = new expression();
+            $$->location = ST->generate_tem_var();                            // Create a temporary variable to store the result
+            add_TAC($$->location, $1->location, $3->location, BW_XOR);            // generate TAC quad
+            //$$ =$1 ^ $3
         }
         ;
 
 inclusive_or_expression: 
         exclusive_or_expression
         {
-            $$ = $1;                                                                                            //transfer the content
+            $$ = new expression();
+            $$ = $1;                // copy content from right to left
         }
         | inclusive_or_expression BITWISE_OR exclusive_or_expression
         {
-            if(typecheck($1->location, $3->location)) {                                                         // Check for type compatibility
-                convert_bool_int($1);                                                                           // Convert bool to int
-                convert_bool_int($3);
-                $$ = new expression();
-                $$->type = "not_bool";                                                                          // The new result is not bool
-                $$->location = symbol_table::generate_tem_var(new ST_entry_type("int"));                        // Create a new temporary
-                add_TAC("|", $$->location->name, $1->location->name, $3->location->name);                       // generate the TAC quad
+            $$ = new expression();
+            ST_entry* first_operand = ST->search_lexeme($1->location);                  // Get the first operand from the ST_entry table
+            ST_entry* second_operand = ST->search_lexeme($3->location);                  // Get the second operand from the ST_entry table
+            if(second_operand->type.type == ARRAY) {                       // If the second operand is an array, perform necessary operations
+                
+                //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
+                string t = ST->generate_tem_var(second_operand->type.next_elem_type);
+                add_TAC(t, $3->location, *($3->folder), ARR_R);
+                $3->location = t;
+                $3->type = second_operand->type.next_elem_type;
             }
-            else {
-                yyerror("Type Mismatch");
+            if(first_operand->type.type == ARRAY) {                       // If the first operand is an array, perform necessary operations
+                
+                //extract the value stored in array and save it in a temporary variable so that arithmetic operation can be performed 
+                string t = ST->generate_tem_var(first_operand->type.next_elem_type);
+                add_TAC(t, $1->location, *($1->folder), ARR_R);
+                $1->location = t;
+                $1->type = first_operand->type.next_elem_type;
             }
+            $$ = new expression();
+            $$->location = ST->generate_tem_var();                            // Create a temporary variable to store the result
+            add_TAC($$->location, $1->location, $3->location, BW_OR);             // generate TAC quad
+            //$$ = $1 | $3
         }
         ;
 
 logical_and_expression: 
         inclusive_or_expression
-        {
-            $$ = $1;                                                                                            //transfer the content
-        }
+        {}
         | logical_and_expression LOGICAL_AND M inclusive_or_expression
         {
             /*
                 augmented the grammar with the non-terminal M marker to have a track of next instruction to be executed during backpatching
             */
-            convert_int_bool($1);                                                                               // Convert the expressions from int to bool
-            convert_int_bool($4);
-            $$ = new expression();                                                                              // Create a new bool expression for the result
-            $$->type = "bool";
-            backpatch($1->truelist, $3);                                                                        // Backpatching
-            $$->truelist = $4->truelist;                                                                        // Generate truelist from truelist of $4
-            $$->falselist = merge_list($1->falselist, $4->falselist);                                           // Generate falselist by merging the falselists of $1 and $4
+            backpatch($1->truelist, $3->instr);                     // Backpatching
+            $$->falselist = merge($1->falselist, $4->falselist);    // Generate falselist by merging the falselists of $1 and $4
+            $$->truelist = $4->truelist;                            // Generate truelist from truelist of $4
+            $$->type = BOOL;                                        // Set the type of the expression to boolean
             // B-> B1 && MB2
             // B.truelist = B2.truelist
             // backpatch(B1.truelist, M.instr)
             //B.falselist = merge(B1.falselist, B2.falselist)
+        
         
         }
         ;
 
 logical_or_expression: 
         logical_and_expression
-        {   
-            $$ = $1;                                                                                            //transfer the content
-        }
-        | logical_or_expression LOGICAL_BITWISE_OR M logical_and_expression
+        {}
+        | logical_or_expression LOGICAL_OR M logical_and_expression
         {
-            convert_int_bool($1);                                                                              // Convert the expressions from int to bool
-            convert_int_bool($4);
-            $$ = new expression();                                                                             // Create a new bool expression for the result
-            $$->type = "bool";
-            backpatch($1->falselist, $3);                                                                      // Backpatching
-            $$->falselist = $4->falselist;                                                                     // Generate falselist from falselist of $4
-            $$->truelist = merge_list($1->truelist, $4->truelist);                                             // Generate truelist by merging the truelists of $1 and $4
+            backpatch($1->falselist, $3->instr);                    // Backpatching
+            $$->truelist = merge($1->truelist, $4->truelist);       // Generate falselist by merging the falselists of $1 and $4
+            $$->falselist = $4->falselist;                          // Generate truelist from truelist of $4
+            $$->type = BOOL;                                        // Set the type of the expression to boolean
             // B-> B1 || MB2
             // B.falselist = B2.falselist
             // backpatch(B1.falselist, M.instr)
@@ -803,28 +1065,33 @@ logical_or_expression:
 conditional_expression: 
         logical_or_expression
         {
-            $$ = $1;                                                                                            //transfer the content
+            $$ = $1;    // copy content from right to left
         }
         | logical_or_expression N QUESTION_MARK M expression N COLON M conditional_expression
         {   
             /*
                 grammar is augmented with the non-terminals M marker and N to keep track of next instruction during backpatching
             */
-            $$->location = symbol_table::generate_tem_var($5->location->type);                                  // Generate temporary for the expression
+            ST_entry* first_operand = ST->search_lexeme($5->location);
+            $$->location = ST->generate_tem_var(first_operand->type.type);      
+            $$->type = first_operand->type.type;
             
-            add_TAC("=", $$->location->name, $9->location->name);                                               //control through fall
-            list<int> l1 = makelist(next_instr_count());
-            add_TAC("goto", "");                                                                                // Prevent fall-through
-            backpatch($6->nextlist, next_instr_count());                                                        // Make list with next instruction
-            add_TAC("=", $$->location->name, $5->location->name);
-            list<int> l2 = makelist(next_instr_count());                                                        // Make list with next instruction
-            l1 = merge_list(l1, l2);                                                                            // Merge the two lists
-            add_TAC("goto", "");                                                                                // Prevent fall-through
-            backpatch($2->nextlist, next_instr_count());                                                        // Backpatching
-            convert_int_bool($1);                                                                               // Convert expression to bool
-            backpatch($1->truelist, $4);                                                                        // When $1 is true, control goes to $4 (expression)
-            backpatch($1->falselist, $8);                                                                       // When $1 is false, control goes to $8 (conditional_expression)
-            backpatch(l1, next_instr_count());
+            add_TAC($$->location, $9->location, "", ASSIGN);         
+            list<int> temp = makelist(next_instruction);
+            
+            add_TAC("", "", "", GOTO);                     
+            backpatch($6->nextlist, next_instruction);         
+            
+            add_TAC($$->location, $5->location, "", ASSIGN);
+            temp = merge(temp, makelist(next_instruction));
+            
+            add_TAC("", "", "", GOTO);                     
+            backpatch($2->nextlist, next_instruction);     
+            convertIntToBool($1);                       
+            backpatch($1->truelist, $4->instr);         
+            backpatch($1->falselist, $8->instr);        
+            backpatch($2->nextlist, next_instruction);  
+            
             /*
             For E -> E1 N1 ? M1 E2 N2 : M2 E3
             E.loc = gentemp();
@@ -842,62 +1109,61 @@ conditional_expression:
             backpatch(E1 .falselist, M2 .instr);
             backpatch(l, nextinstr);
             */
-        
         }
         ;
 
-M:      %empty
-        {  
+M: %empty
+        {   
+            
             //M - > epsilon 
             //store the count of theb next instruction and will be used for backpatching in control flow statements
-            $$ = next_instr_count();
+            $$ = new expression();
+            $$->instr = next_instruction;
         }
         ;
 
-N:      %empty
+N: %empty
         {
-            // N -> epsilon 
+             // N -> epsilon 
             // Helps in control flow statments
-            $$ = new statement();
-            $$->nextlist = makelist(next_instr_count());
-            add_TAC("goto", "");
+           
+            $$ = new expression();
+            $$->nextlist = makelist(next_instruction);
+            add_TAC("", "", "", GOTO);
         }
         ;
 
 assignment_expression: 
         conditional_expression
-        {
-            $$ = $1;                                                                                                //transfer the content
-        }
+        {}
         | unary_expression assignment_operator assignment_expression
         {
-            if($1->arr_type == "arr") {                                                                             // If arr_type is "arr", convert and create a TAC quad
-                $3->location = convert_type($3->location, $1->type->type);
-                add_TAC("[]=", $1->array->name, $1->location->name, $3->location->name);
+            ST_entry* sym1 = ST->search_lexeme($1->location);         // Get the first operand from the ST_entry table
+            ST_entry* sym2 = ST->search_lexeme($3->location);         // Get the second operand from the ST_entry table
+            if($1->fold == 0) {
+                if(sym1->type.type != ARRAY)
+                    add_TAC($1->location, $3->location, "", ASSIGN);
+                else
+                    add_TAC($1->location, $3->location, *($1->folder), ARR_L);
             }
-            else if($1->arr_type == "ptr") {                                                                        // If arr_type is "ptr", create a TAC quad 
-                add_TAC("*=", $1->array->name, $3->location->name);
-            }
-            else {
-                $3->location = convert_type($3->location, $1->array->type->type);                                   //for other types convert the data type to make them compatible and create a TAC quad
-                add_TAC("=", $1->array->name, $3->location->name);
-            }
-            $$ = $3;
+            else
+                add_TAC(*($1->folder), $3->location, "", L_DEREF);
+            $$ = $1;        // Assignment 
         }
         ;
 
 assignment_operator: 
-        ASSIGN
+        ASSIGN_
         {}
         | MUL_ASSIGN
         {}
-        | DIV_ASSIGN
+        | F_SLASH_ASSIGN
         {}
         | MODULO_ASSIGN
         {}
-        | PLUS_ASSIGN
+        | PLUSASSIGN
         {}
-        | MINUS_ASSIGN
+        | SUBTRACT_ASSIGN
         {}
         | LEFT_SHIFT_ASSIGN
         {}
@@ -905,17 +1171,15 @@ assignment_operator:
         {}
         | BITWISE_AND_ASSIGN
         {}
-        | BITWISE_OR_ASSIGN
-        {}
         | BITWISE_XOR_ASSIGN
+        {}
+        | BITWISE_OR_ASSIGN
         {}
         ;
 
 expression: 
         assignment_expression
-        {
-            $$ = $1;
-        }
+        {}
         | expression COMMA assignment_expression
         {}
         ;
@@ -925,12 +1189,69 @@ constant_expression:
         {}
         ;
 
-    //declaration
+//declaration
 //these productions will be responsible for updating and creating symbol table
+
 declaration: 
-        declaration_specifiers init_declarator_list SEMI_COLON
-        {}
-        | declaration_specifiers SEMI_COLON
+        declaration_specifiers init_declarator_list SEMICOLON
+        {
+            data_dtype currType = $1;
+            int currSize = -1;
+            // Assign correct size for the data type
+            if(currType == INT)
+                currSize = 4;
+            else if(currType == CHAR)
+                currSize = 1;
+            else if(currType == FLOAT)
+                currSize = 8;
+            vector<declaration*> decs = *($2);
+            for(vector<declaration*>::iterator it = decs.begin(); it != decs.end(); it++) {
+                declaration* currDec = *it;
+                if(currDec->type == FUNCTION) {
+                    ST = &ST_global;
+                    add_TAC(currDec->name, "", "", FUNC_END);
+                    ST_entry* first_operand = ST->search_lexeme(currDec->name);        // Create an entry for the function
+                    ST_entry* second_operand = first_operand->nested_symbol_table->search_lexeme("RETVAL", currType, currDec->pointers);
+                    first_operand->size = 0;
+                    first_operand->initial_value = NULL;
+                    continue;
+                }
+
+                ST_entry* three = ST->search_lexeme(currDec->name, currType);        // Create an entry for the variable in the ST_entry table
+                three->nested_symbol_table = NULL;
+                if(currDec->li == vector<int>() && currDec->pointers == 0) {
+                    three->type.type = currType;
+                    three->size = currSize;
+                    if(currDec->initial_value != NULL) {
+                        string rval = currDec->initial_value->location;
+                        add_TAC(three->name, rval, "", ASSIGN);
+                        three->initial_value = ST->search_lexeme(rval)->initial_value;
+                    }
+                    else
+                        three->initial_value = NULL;
+                }
+                else if(currDec->li != vector<int>()) {         // Handle array dtype
+                    three->type.type = ARRAY;
+                    three->type.next_elem_type = currType;
+                    three->type.dims = currDec->li;
+                    vector<int> temp = three->type.dims;
+                    int sz = currSize;
+                    for(int i = 0; i < (int)temp.size(); i++)
+                        sz *= temp[i];
+                    ST->offset += sz;
+                    three->size = sz;
+                    ST->offset -= 4;
+                }
+                else if(currDec->pointers != 0) {               // Handle pointer dtype
+                    three->type.type = POINTER;
+                    three->type.next_elem_type = currType;
+                    three->type.pointers = currDec->pointers;
+                    ST->offset += (8 - currSize);
+                    three->size = 8;
+                }
+            }
+        }
+        | declaration_specifiers SEMICOLON
         {}
         ;
 
@@ -955,24 +1276,27 @@ declaration_specifiers:
 
 init_declarator_list: 
         init_declarator
-        {}
+        {
+            $$ = new vector<declaration*>;      // Create a vector of declarations and add $1 to it
+            $$->push_back($1);
+        }
         | init_declarator_list COMMA init_declarator
-        {}
+        {
+            $1->push_back($3);                  // Add $3 to the vector of declarations
+            $$ = $1;
+        }
         ;
 
 init_declarator: 
         declarator
         {
             $$ = $1;
+            $$->initial_value = NULL;         // Initialize the initial_value to NULL as no initialization is dfirst_operand
         }
-        | declarator ASSIGN initializer
+        | declarator ASSIGN_ initializer
         {   
-            //asssign the initial value to the symbol if any
-            if($3->value != "") {
-                $1->value = $3->value;
-            }
-            //generate a TAC quad for the same
-            add_TAC("=", $1->name, $3->name);
+            $$ = $1;
+            $$->initial_value = $3;           // Initialize the initial_value to the value provided
         }
         ;
 
@@ -987,27 +1311,26 @@ storage_class_specifier:
         {}
         ;
 
-type_specifier:
-        //since we are asked to handle only void char int and float data type, semantic rules for the same have been added.
-        VOID
+type_specifier: 
+        VOID_
         {
-            prev_var = "void";   // Store the latest encountered type in prev_var
+            $$ = VOID;
         }
-        | CHAR
+        | CHAR_
         {
-            prev_var = "char";   // Store the latest encountered type in prev_var
+            $$ = CHAR;
         }
         | SHORT
         {}
-        | INT
+        | INT_
         {
-            prev_var = "int";    // Store the latest encountered type in prev_var
+            $$ = INT; 
         }
         | LONG
         {}
-        | FLOAT
+        | FLOAT_
         {
-            prev_var = "float";  // Store the latest encountered type in prev_var
+            $$ = FLOAT;
         }
         | DOUBLE
         {}
@@ -1015,43 +1338,38 @@ type_specifier:
         {}
         | UNSIGNED
         {}
-        | _BOOL
+        | BOOL_
         {}
-        | _COMPLEX
+        | COMPLEX
         {}
-        | _IMAGINARY
+        | IMAGINARY
         {}
         | enum_specifier
         {}
         ;
 
 specifier_qualifier_list: 
-        type_specifier specifier_qualifier_listopt
+        type_specifier specifier_qualifier_list_opt
         {}
-        | type_qualifier specifier_qualifier_listopt
+        | type_qualifier specifier_qualifier_list_opt
         {}
         ;
 
-specifier_qualifier_listopt: 
+specifier_qualifier_list_opt: 
         specifier_qualifier_list
         {}
-        |%empty
+        | %empty
         {}
         ;
 
 enum_specifier: 
-        ENUM identifieropt LEFT_CURLY enumerator_list RIGHT_CURLY
+        ENUM LEFT_CURLY enumerator_list RIGHT_CURLY
         {}
-        | ENUM identifieropt LEFT_CURLY enumerator_list COMMA RIGHT_CURLY
+        | ENUM IDENTIFIER LEFT_CURLY enumerator_list RIGHT_CURLY
+        {}
+        | ENUM IDENTIFIER LEFT_CURLY enumerator_list COMMA RIGHT_CURLY
         {}
         | ENUM IDENTIFIER
-        {}
-        ;
-
-identifieropt: 
-        IDENTIFIER
-        {}
-        |%empty
         {}
         ;
 
@@ -1065,7 +1383,7 @@ enumerator_list:
 enumerator: 
         IDENTIFIER
         {}
-        | IDENTIFIER ASSIGN constant_expression
+        | IDENTIFIER ASSIGN_ constant_expression
         {}
         ;
 
@@ -1086,148 +1404,107 @@ function_specifier:
 declarator: 
         pointer direct_declarator
         {
-            ST_entry_type* t = $1;
-            // In case of multi-dimensional arrays, keep traversing down until t points to a basic data type
-            while(t->derived_arr != NULL) {
-                t = t->derived_arr;
-            }
-            t->derived_arr = $2->type;       // t now stores a basic data type
-            $$ = $2->update_entry($1);       // Update the direct_declarator
+            $$ = $2;
+            $$->pointers = $1;
         }
         | direct_declarator
-        {}
+        {
+            $$ = $1;
+            $$->pointers = 0;
+        }
         ;
 
 direct_declarator: 
         IDENTIFIER
         {
-            $$ = $1->update_entry(new ST_entry_type(prev_var));   // For the new identifier create a new symbol of previous symbol type
-            curr_symbol = $$;                                     // Update pointer to current symbol
+            $$ = new declaration();
+            $$->name = *($1);
         }
-        | LEFT_PARENTHESES declarator RIGHT_PARENTHESES
-        {
-            $$ = $2;                                              //transfer the content
-        }
-        | direct_declarator LEFT_SQUARE type_qualifier_list assignment_expression RIGHT_SQUARE
+        | LEFT_PARENTHESIS declarator RIGHT_PARENTHESIS
         {}
-        | direct_declarator LEFT_SQUARE type_qualifier_list RIGHT_SQUARE
-        {}
-        | direct_declarator LEFT_SQUARE assignment_expression RIGHT_SQUARE
+        | direct_declarator LEFT_SQUARE type_qualifier_list_opt RIGHT_SQUARE
         {
-            ST_entry_type* t = $1->type;
-            ST_entry_type* prev = NULL;
-
-            // traverse down the array to get the base data type of the array
-            while(t->type == "arr") {
-                prev = t;
-                t = t->derived_arr;
-            }
-            if(prev == NULL) {
-                //that is the type of t is not array
-                // create a new array with base data type as type of direct_declarator and width is value of assignment_expression
-
-                int temp = atoi($3->location->value.c_str());                   // Get initial value
-                ST_entry_type* tp = new ST_entry_type("arr", $1->type, temp);   // Create that type
-                $$ = $1->update_entry(tp);                                      // Update the symbol table for that symbol
-            }
-            else {
-                //t is of type array i.e. this declaration will add a dimension to the array
-                // another level of nesting with width being the value of assignment_expression
-                
-                int temp = atoi($3->location->value.c_str());                   // Get initial value
-                prev->derived_arr = new ST_entry_type("arr", t, temp);          // Create that type
-                $$ = $1->update_entry($1->type);                                // Update the symbol table for that symbol
-            }
+            $1->type = ARRAY;       // Array type
+            $1->next_elem_type = INT;     // Array of ints
+            $$ = $1;
+            $$->li.push_back(0);
         }
-        | direct_declarator LEFT_SQUARE RIGHT_SQUARE
+        | direct_declarator LEFT_SQUARE type_qualifier_list_opt assignment_expression RIGHT_SQUARE
         {
-            ST_entry_type* t = $1->type;
-            ST_entry_type* prev = NULL;
-            
-            // traverse down the array to get the basic data type
-            while(t->type == "arr") {
-                prev = t;
-                t = t->derived_arr;
-            }
-            if(prev == NULL) {
-                //if the t is not of tytpe array
-                //this will create an array of size 0
-                ST_entry_type* tp = new ST_entry_type("arr", $1->type, 0);
-                $$ = $1->update_entry(tp);
-            }
-            else {
-                //if t is already of type array, this will create a new level of nesting of width 0
-                prev->derived_arr = new ST_entry_type("arr", t, 0);
-                $$ = $1->update_entry($1->type);
-            }
+            $1->type = ARRAY;       // Array type
+            $1->next_elem_type = INT;     // Array of ints
+            $$ = $1;
+            int index = ST->search_lexeme($4->location)->initial_value->i;
+            $$->li.push_back(index);
         }
         | direct_declarator LEFT_SQUARE STATIC type_qualifier_list assignment_expression RIGHT_SQUARE
         {}
-        | direct_declarator LEFT_SQUARE STATIC assignment_expression RIGHT_SQUARE
-        {}
         | direct_declarator LEFT_SQUARE type_qualifier_list STATIC assignment_expression RIGHT_SQUARE
         {}
-        | direct_declarator LEFT_SQUARE type_qualifier_list MUL RIGHT_SQUARE
-        {}
-        | direct_declarator LEFT_SQUARE MUL RIGHT_SQUARE
-        {}
-        | direct_declarator LEFT_PARENTHESES change_table parameter_type_list RIGHT_PARENTHESES
+        | direct_declarator LEFT_SQUARE type_qualifier_list_opt MUL RIGHT_SQUARE
         {
-            //function declaration
-            //extract the current symbol table
-            curr_symb_table->name = $1->name;
-            
-            //if the return type of the function is void
-            if($1->type->type != "void") {
-                //look for the symbol table entry with name return
-                ST_entry* s = curr_symb_table->search_lexeme("return");    
-                //store the type void as the value of symbol return
-                s->update_entry($1->type);
-            }
-
-            //make this table nested to the global symbol table
-            $1->nested_symbol_table = curr_symb_table;
-            curr_symb_table->parent = global_symb_table;    // Update parent of current symbol table
-            move_to_table(global_symb_table);               // Switch current table to global symbol table
-            curr_symbol = $$;                               // Update current symbol
+            $1->type = POINTER;     // Pointer type
+            $1->next_elem_type = INT;
+            $$ = $1;
         }
-        | direct_declarator LEFT_PARENTHESES identifier_list RIGHT_PARENTHESES
-        {}
-        | direct_declarator LEFT_PARENTHESES change_table RIGHT_PARENTHESES
+        | direct_declarator LEFT_PARENTHESIS parameter_type_list_opt RIGHT_PARENTHESIS
         {
-            //function with no parameters
-            //extract the current symbol table
-            curr_symb_table->name = $1->name;
-            //update the value of return symbol to void if the return data type is void
-            if($1->type->type != "void") {
-                ST_entry* s = curr_symb_table->search_lexeme("return");    // Lookup for return value
-                s->update_entry($1->type);
+            $$ = $1;
+            $$->type = FUNCTION;    // Function type
+            ST_entry* funcData = ST->search_lexeme($$->name, $$->type);
+            symbol_table* function_ST = new symbol_table();
+            funcData->nested_symbol_table = function_ST;
+            vector<param*> paramList = *($3);   // Get the parameter list
+            for(int i = 0; i < (int)paramList.size(); i++) {
+                param* curParam = paramList[i];
+                if(curParam->type.type == ARRAY) {          // If the parameter is an array
+                    function_ST->search_lexeme(curParam->name, curParam->type.type);
+                    function_ST->search_lexeme(curParam->name)->type.next_elem_type = INT;
+                    function_ST->search_lexeme(curParam->name)->type.dims.push_back(0);
+                }
+                else if(curParam->type.type == POINTER) {   // If the parameter is a pointer
+                    function_ST->search_lexeme(curParam->name, curParam->type.type);
+                    function_ST->search_lexeme(curParam->name)->type.next_elem_type = INT;
+                    function_ST->search_lexeme(curParam->name)->type.dims.push_back(0);
+                }
+                else                                        // If the parameter is a anything other than an array or a pointer
+                    function_ST->search_lexeme(curParam->name, curParam->type.type);
             }
+            ST = function_ST;         // Set the pointer to the ST_entry table to the function's ST_entry table
+            add_TAC($$->name, "", "", FUNC_BEG);
+        }
+        | direct_declarator LEFT_PARENTHESIS identifier_list RIGHT_PARENTHESIS
+        {}
+        ;
 
-            //make the symbol table of the function as nested table of global symbol table
-            $1->nested_symbol_table = curr_symb_table;
-            curr_symb_table->parent = global_symb_table;        // Update parent symbol table
-            move_to_table(global_symb_table);                   // Switch current table to global symbol table
-            curr_symbol = $$;                                   // Update current symbol
+parameter_type_list_opt:
+        parameter_type_list
+        {}
+        | %empty
+        {
+            $$ = new vector<param*>;
         }
         ;
 
-type_qualifier_listopt: 
+type_qualifier_list_opt: 
         type_qualifier_list
         {}
-        |%empty
+        | %empty
         {}
         ;
 
-// pointer declarations
 pointer: 
-        MUL type_qualifier_listopt
+        MUL type_qualifier_list
+        {}
+        | MUL
         {
-            $$ = new ST_entry_type("ptr");                       //Create new symbol of type "ptr"
+            $$ = 1;
         }
-        | MUL type_qualifier_listopt pointer
+        | MUL type_qualifier_list pointer
+        {}
+        | MUL pointer
         {
-            $$ = new ST_entry_type("ptr", $3);                   //Create new symbol of type "ptr"
+            $$ = 1 + $2;
         }
         ;
 
@@ -1240,21 +1517,38 @@ type_qualifier_list:
 
 parameter_type_list: 
         parameter_list
-        {}
         | parameter_list COMMA ELLIPSIS
-        {}
         ;
 
 parameter_list: 
         parameter_declaration
-        {}
+        {
+            $$ = new vector<param*>;         // Create a new vector of parameters
+            $$->push_back($1);              // Add the parameter to the vector
+        }
         | parameter_list COMMA parameter_declaration
-        {}
+        {
+            $1->push_back($3);              // Add the parameter to the vector
+            $$ = $1;
+        }
         ;
 
 parameter_declaration: 
         declaration_specifiers declarator
-        {}
+        {
+            $$ = new param();
+            $$->name = $2->name;
+            if($2->type == ARRAY) {
+                $$->type.type = ARRAY;
+                $$->type.next_elem_type = $1;
+            }
+            else if($2->pc != 0) {
+                $$->type.type = POINTER;
+                $$->type.next_elem_type = $1;
+            }
+            else
+                $$->type.type = $1;
+        }
         | declaration_specifiers
         {}
         ;
@@ -1274,7 +1568,7 @@ type_name:
 initializer: 
         assignment_expression
         {
-            $$ = $1->location;  //transfer the content
+            $$ = $1;   // copy content from right to left
         }
         | LEFT_CURLY initializer_list RIGHT_CURLY
         {}
@@ -1283,21 +1577,21 @@ initializer:
         ;
 
 initializer_list: 
-        designationopt initializer
+        designation_opt initializer
         {}
-        | initializer_list COMMA designationopt initializer
+        | initializer_list COMMA designation_opt initializer
         {}
         ;
 
-designationopt: 
+designation_opt: 
         designation
         {}
-        |%empty
+        | %empty
         {}
         ;
 
 designation: 
-        designator_list ASSIGN
+        designator_list ASSIGN_
         {}
         ;
 
@@ -1315,55 +1609,14 @@ designator:
         {}
         ;
 
-// statements
-
 statement: 
         labeled_statement
         {}
         | compound_statement
-        {
-            $$ = $1;                        //transfer the content
-        }
         | expression_statement
-        {
-            $$ = new statement();           // Create new statement
-            $$->nextlist = $1->nextlist;    // Assign same nextlist
-        }
         | selection_statement
-        {
-            $$ = $1;                        //transfer the content
-        }
         | iteration_statement
-        {
-            $$ = $1;                        //transfer the content
-        }
         | jump_statement
-        {
-            $$ = $1;                        //transfer the content
-        }
-        ;
-
-/* new non-terminal for loop */
-loop_statement:
-        labeled_statement
-        {}
-        | expression_statement
-        {
-            $$ = new statement();           // Create new statement
-            $$->nextlist = $1->nextlist;    // Assign same nextlist
-        }
-        | selection_statement
-        {
-            $$ = $1;    // transfer the content
-        }
-        | iteration_statement
-        {
-            $$ = $1;    // transfer the content
-        }
-        | jump_statement
-        {
-            $$ = $1;    // transfer the content
-        }
         ;
 
 labeled_statement: 
@@ -1376,286 +1629,145 @@ labeled_statement:
         ;
 
 compound_statement: 
-        LEFT_CURLY change_block change_table block_item_listopt RIGHT_CURLY
+        LEFT_CURLY RIGHT_CURLY
+        {}
+        | LEFT_CURLY blocationk_item_list RIGHT_CURLY
         {
-            
-            /*
-                change_block marker has been added to allow symbol table creation for different blocks
-            */
-            $$ = $4;
-            move_to_table(curr_symb_table->parent);//block has been parsed completely, swicth back to the parent symbol table
+            $$ = $2;
         }
         ;
 
-block_item_listopt: 
-        block_item_list
+blocationk_item_list: 
+        blocationk_item
         {
-            $$ = $1;                //transfer the content
+            $$ = $1;    // copy content from right to left
+            backpatch($1->nextlist, next_instruction);
         }
-        |%empty
-        {
-            $$ = new statement();   // Create new statement
-        }
-        ;
-
-block_item_list: 
-        block_item
-        {
-            $$ = $1;                       //transfer the content
-        }
-        | block_item_list M block_item
+        | blocationk_item_list M blocationk_item
         {   
             /*
-                M marker has been added to keep track of next instruction during backpatching
+                This production rule has been augmented with the non-terminal M
             */
-            $$ = $3;
-            backpatch($1->nextlist, $2);    // M.instr would be the next instruction after $1 so backpatch 
+            $$ = new expression();
+            backpatch($1->nextlist, $2->instr);    // After $1, move to blocationk_item via $2
+            $$->nextlist = $3->nextlist;
         }
         ;
 
-block_item: 
+blocationk_item: 
         declaration
         {
-            $$ = new statement();           // Create new statement
+            $$ = new expression();   // new expression node
         }
         | statement
-        {
-            $$ = $1;                        //transfer the content
-        }
         ;
 
 expression_statement: 
-        expression SEMI_COLON
+        expression SEMICOLON
+        {}
+        | SEMICOLON
         {
-            $$ = $1;                        //transfer the content
-        }
-        | SEMI_COLON
-        {
-            $$ = new expression();          // Create new expression
+            $$ = new expression();  // new expression node
         }
         ;
 
 selection_statement: 
-/*
-
-If Else
-
-%prec THEN is to remove conflicts/ambiguity
-
-Marker M to keep track of next isntruction and N to keep track of nextlist
-
-S -> if (B) M S1 N
-backpatch(B.truelist, M.instr )
-temp = merge(S1.nextlist, N.nextlist)
-S.nextlist = merge(B.falselist,temp)
-
-S -> if (B) M1 S1 N else M2 S2
-backpatch(B.truelist, M1.instr)
-backpatch(B.falselist, M2.instr)
-temp = merge(S1.nextlist, N.nextlist)
-S.nextlist = merge(temp, S2 .nextlist)
-
-*/
-        IF LEFT_PARENTHESES expression RIGHT_PARENTHESES M statement N %prec THEN
+        IF LEFT_PARENTHESIS expression N RIGHT_PARENTHESIS M statement N
         {
             /*
-                M and N markers help in backpatching
+                This production rule has been augmented for control flow
             */
-            convert_int_bool($3);                                           // Convert expression to bool
-            $$ = new statement();                                           // Create new statement
-            backpatch($3->truelist, $5);                                    // Backpatching 
-            
+            backpatch($4->nextlist, next_instruction);         // nextlist of N now has next_instruction
+            convertIntToBool($3);                       // Convert expression to bool
+            backpatch($3->truelist, $6->instr);         // Backpatching - if expression is true, go to M
+            $$ = new expression();                      // new expression node
             // Merge falselist of expression, nextlist of statement and nextlist of the last N
-            list<int> temp = merge_list($7->nextlist, $6->nextlist);
-            $$->nextlist = merge_list($3->falselist, temp);
+            $7->nextlist = merge($8->nextlist, $7->nextlist);
+            $$->nextlist = merge($3->falselist, $7->nextlist);
         }
-        | IF LEFT_PARENTHESES expression RIGHT_PARENTHESES M statement N ELSE M statement
+        | IF LEFT_PARENTHESIS expression N RIGHT_PARENTHESIS M statement N ELSE M statement N
         {
             /*
-                M and N markers help in backpatching
+                This production rule has been augmented for control flow
             */
-            convert_int_bool($3);                                   // Convert expression to bool
-            $$ = new statement();                                   // Create new statement
-            backpatch($3->truelist, $5);                            // Backpatching
-            backpatch($3->falselist, $9);
-            
+            backpatch($4->nextlist, next_instruction);         // nextlist of N now has next_instruction
+            convertIntToBool($3);                       // Convert expression to bool
+            backpatch($3->truelist, $6->instr);         // Backpatching - if expression is true, go to first M, else go to second M
+            backpatch($3->falselist, $10->instr);
+            $$ = new expression();                      // new expression node
             // Merge nextlist of statement, nextlist of N and nextlist of the last statement
-            list<int> temp = merge_list($6->nextlist, $7->nextlist);
-            $$->nextlist = merge_list($10->nextlist, temp);
+            $$->nextlist = merge($7->nextlist, $8->nextlist);
+            $$->nextlist = merge($$->nextlist, $11->nextlist);
+            $$->nextlist = merge($$->nextlist, $12->nextlist);
         }
-        | SWITCH LEFT_PARENTHESES expression RIGHT_PARENTHESES statement
+        | SWITCH LEFT_PARENTHESIS expression RIGHT_PARENTHESIS statement
         {}
         ;
 
 iteration_statement: 
-
-        // W D and F will help us print the blockname (variable block)
-        //which we need to set before change_block is matched
-        // M and N markers are used as usual to keep a track of next instruction to be executed 
-        //which would be used for backpatching. 
-         WHILE W LEFT_PARENTHESES change_block change_table M expression RIGHT_PARENTHESES M loop_statement
+        WHILE M LEFT_PARENTHESIS expression N RIGHT_PARENTHESIS M statement
         {   
-            
-            $$ = new statement();                   // Create a new statement
-            convert_int_bool($7);                   // Convert expression to bool
-            backpatch($10->nextlist, $6);           // Go back to M1 and expression after one iteration of loop_statement
-            backpatch($7->truelist, $9);            // Go to M2 and loop_statement if expression is true
-            $$->nextlist = $7->falselist;           // Exit loop if expression is false
-            add_TAC("goto", convert_int_str($6));   // generate TAC for to prevent fall-through
-            block = "";
-            move_to_table(curr_symb_table->parent);
+            /*
+                This production rule has been augmented with non-terminals like M and N to handle the control flow and backpatching
+            */
+            $$ = new expression();                   // Create a new expression
+            add_TAC("", "", "", GOTO);
+            backpatch(makelist(next_instruction - 1), $2->instr);
+            backpatch($5->nextlist, next_instruction);
+            convertIntToBool($4);                   // Convert expression to bool
+            $$->nextlist = $4->falselist;           // Exit loop if expression is false
+            backpatch($4->truelist, $7->instr);     // Backpatching - if expression is true, go to M
+            backpatch($8->nextlist, $2->instr);     // Backpatching - go to the beginning of the loop
         }
-        | WHILE W LEFT_PARENTHESES change_block change_table M expression RIGHT_PARENTHESES LEFT_CURLY M block_item_listopt RIGHT_CURLY
+        | DO M statement M WHILE LEFT_PARENTHESIS expression N RIGHT_PARENTHESIS SEMICOLON
         {
-            
-            $$ = new statement();                   // Create a new statement
-            convert_int_bool($7);                   // Convert expression to bool
-            backpatch($11->nextlist, $6);           // Go back to M1 and expression after one iteration
-            backpatch($7->truelist, $10);           // Go to M2 and block_item_listopt if expression is true
-            $$->nextlist = $7->falselist;           // Exit loop if expression is false
-            add_TAC("goto", convert_int_str($6));   // generate TAC for to prevent fall-through
-            block = "";
-            move_to_table(curr_symb_table->parent);
+            /*
+                This production rule has been augmented with non-terminals like M and N to handle the control flow and backpatching
+            */
+            $$ = new expression();                  // Create a new expression  
+            backpatch($8->nextlist, next_instruction);     // Backpatching 
+            convertIntToBool($7);                   // Convert expression to bool
+            backpatch($7->truelist, $2->instr);     // Backpatching - if expression is true, go to M
+            backpatch($3->nextlist, $4->instr);     // Backpatching - go to the beginning of the loop
+            $$->nextlist = $7->falselist;
         }
-        | DO D M loop_statement M WHILE LEFT_PARENTHESES expression RIGHT_PARENTHESES SEMI_COLON
+        | FOR LEFT_PARENTHESIS expression_statement M expression_statement N M expression N RIGHT_PARENTHESIS M statement
         {
-            $$ = new statement();                   // Create a new statement     
-            convert_int_bool($8);                   // Convert expression to bool
-            backpatch($8->truelist, $3);            // Go back to M1 and loop_statement if expression is true
-            backpatch($4->nextlist, $5);            // Go to M2 to check expression after statement is complete
-            $$->nextlist = $8->falselist;           // Exit loop if expression is false  
-            block = "";
-        }
-        | DO D LEFT_CURLY M block_item_listopt RIGHT_CURLY M WHILE LEFT_PARENTHESES expression RIGHT_PARENTHESES SEMI_COLON
-        {
-            $$ = new statement();                   // Create a new statement  
-            convert_int_bool($10);                  // Convert expression to bool
-            backpatch($10->truelist, $4);           // Go back to M1 and block_item_listopt if expression is true
-            backpatch($5->nextlist, $7);            // Go to M2 to check expression after block_item_listopt is complete
-            $$->nextlist = $10->falselist;          // Exit loop if expression is false  
-            block = "";
-        }
-        | FOR F LEFT_PARENTHESES change_block change_table declaration M expression_statement M expression N RIGHT_PARENTHESES M loop_statement
-        {
-            
-            $$ = new statement();                   // Create a new statement
-            convert_int_bool($8);                   // Convert expression to bool
-            backpatch($8->truelist, $13);           // Go to M3 if expression is true
-            backpatch($11->nextlist, $7);           // Go back to M1 after N
-            backpatch($14->nextlist, $9);           // Go back to expression after loop_statement
-            add_TAC("goto", convert_int_str($9));   // generate TAC for to prevent fall-through
-            $$->nextlist = $8->falselist;           // Exit loop if expression_statement is false
-            block = "";
-            move_to_table(curr_symb_table->parent);
-        }
-        | FOR F LEFT_PARENTHESES change_block change_table expression_statement M expression_statement M expression N RIGHT_PARENTHESES M loop_statement
-        {
-            $$ = new statement();                   // Create a new statement
-            convert_int_bool($8);                   // Convert expression to bool
-            backpatch($8->truelist, $13);           // Go to M3 if expression is true
-            backpatch($11->nextlist, $7);           // Go back to M1 after N
-            backpatch($14->nextlist, $9);           // Go back to expression after loop_statement
-            add_TAC("goto", convert_int_str($9));   // generate TAC for to prevent fall-through
-            $$->nextlist = $8->falselist;           // Exit loop if expression_statement is false
-            block = "";
-            move_to_table(curr_symb_table->parent);
-        }
-        | FOR F LEFT_PARENTHESES change_block change_table declaration M expression_statement M expression N RIGHT_PARENTHESES M LEFT_CURLY block_item_listopt RIGHT_CURLY
-        {
-            $$ = new statement();                   // Create a new statement
-            convert_int_bool($8);                   // Convert expression to bool
-            backpatch($8->truelist, $13);           // Go to M3 if expression is true
-            backpatch($11->nextlist, $7);           // Go back to M1 after N
-            backpatch($15->nextlist, $9);           // Go back to expression after loop_statement
-            add_TAC("goto", convert_int_str($9));   // generate TAC for to prevent fall-through
-            $$->nextlist = $8->falselist;           // Exit loop if expression_statement is false
-            block = "";
-            move_to_table(curr_symb_table->parent);
-        }
-        | FOR F LEFT_PARENTHESES change_block change_table expression_statement M expression_statement M expression N RIGHT_PARENTHESES M LEFT_CURLY block_item_listopt RIGHT_CURLY
-        {
-            $$ = new statement();                   // Create a new statement
-            convert_int_bool($8);                   // Convert expression to bool
-            backpatch($8->truelist, $13);           // Go to M3 if expression is true
-            backpatch($11->nextlist, $7);           // Go back to M1 after N
-            backpatch($15->nextlist, $9);           // Go back to expression after loop_statement
-            add_TAC("goto", convert_int_str($9));   // generate TAC for to prevent fall-through
-            $$->nextlist = $8->falselist;           // Exit loop if expression_statement is false
-            block = "";
-            move_to_table(curr_symb_table->parent);
-        }
-        ;
-
-F: %empty
-        {   
-            //For Loop
-            block = "For";
-        }
-        ;
-
-W: %empty
-        {
-           // While Loop
-            block = "While";
-        }
-        ;
-
-D: %empty
-        {
-            //Do While Loop
-            block = "Do_While";
-        }
-        ;
-
-
-change_block:%empty
-        {   
-            // Used for creating new nested symbol tables for nested blocks
-            string newST = curr_symb_table->name +"->" + block + "." + to_string(num_ST++);  // Generate name for new symbol table
-            ST_entry* sym = curr_symb_table->search_lexeme(newST);
-            sym->nested_symbol_table = new symbol_table(newST);  // Create new symbol table
-            sym->name = newST;
-            sym->nested_symbol_table->parent = curr_symb_table;
-            sym->type = new ST_entry_type("block");    // The type will be "block"
-            curr_symbol = sym;    // Change the current symbol pointer
-        }
-        ;
-
-change_table:%empty
-        {   
-            // to chnage the symbol table whenever a function is called
-            if(curr_symbol->nested_symbol_table != NULL) {
-                // If the symbol table for that function already exists, switch to that table
-                move_to_table(curr_symbol->nested_symbol_table);
-                add_TAC("label", curr_symb_table->name);
-            }
-            else {
-                // If the symbol table for the function doesn't exist, create a new one and move to the new symbol table
-                move_to_table(new symbol_table(""));
-            }
+            /*
+                This production rule has been augmented with non-terminals like M and N to handle the control flow and backpatching
+            */
+            $$ = new expression();                   // Create a new expression
+            add_TAC("", "", "", GOTO);
+            $12->nextlist = merge($12->nextlist, makelist(next_instruction - 1));
+            backpatch($12->nextlist, $7->instr);    // Backpatching - go to the beginning of the loop
+            backpatch($9->nextlist, $4->instr);     
+            backpatch($6->nextlist, next_instruction);     
+            convertIntToBool($5);                   // Convert expression to bool
+            backpatch($5->truelist, $11->instr);    // Backpatching - if expression is true, go to M
+            $$->nextlist = $5->falselist;           // Exit loop if expression is false
         }
         ;
 
 jump_statement: 
-        GOTO IDENTIFIER SEMI_COLON
+        GOTO_ IDENTIFIER SEMICOLON
         {}
-        | CONTINUE SEMI_COLON
+        | CONTINUE SEMICOLON
+        {}
+        | BREAK SEMICOLON
+        {}
+        | RETURN_ SEMICOLON
         {
-            $$ = new statement();
+            if(ST->search_lexeme("RETVAL")->type.type == VOID) {
+                add_TAC("", "", "", RETURN);           // generate TAC quad when return type is void
+            }
+            $$ = new expression();
         }
-        | BREAK SEMI_COLON
+        | RETURN_ expression SEMICOLON
         {
-            $$ = new statement();
-        }
-        | RETURN expression SEMI_COLON
-        {
-            $$ = new statement();
-            add_TAC("return", $2->location->name);  // generate TAC for return alongwith return value
-        }
-        | RETURN SEMI_COLON
-        {
-            $$ = new statement();
-            add_TAC("return", "");                   // generate TAC for return without any return value
+            if(ST->search_lexeme("RETVAL")->type.type == ST->search_lexeme($2->location)->type.type) {
+                add_TAC($2->location, "", "", RETURN);      // generate TAC quad when return type is not void
+            }
+            $$ = new expression();
         }
         ;
 
@@ -1674,19 +1786,35 @@ external_declaration:
         ;
 
 function_definition: 
-        declaration_specifiers declarator declaration_listopt change_table LEFT_CURLY block_item_listopt RIGHT_CURLY
-        {   
-            curr_symb_table->parent = global_symb_table;
-            num_ST = 0;
-            move_to_table(global_symb_table);          // After reaching end of a function, change cureent symbol table to the global symbol table
+        declaration_specifiers declarator declaration_list compound_statement
+        {}
+        | function_prototype compound_statement
+        {
+            ST = &ST_global;                     // Reset the ST_entry table to global ST_entry table
+            add_TAC($1->name, "", "", FUNC_END);
         }
         ;
 
-declaration_listopt: 
-        declaration_list
-        {}
-        |%empty
-        {}
+function_prototype:
+        declaration_specifiers declarator
+        {
+            data_dtype currType = $1;
+            int currSize = -1;
+            if(currType == CHAR)
+                currSize = 1;
+            if(currType == INT)
+                currSize = 4;
+            if(currType == FLOAT)
+                currSize = 8;
+            declaration* currDec = $2;
+            ST_entry* sym = ST_global.search_lexeme(currDec->name);
+            if(currDec->type == FUNCTION) {
+                ST_entry* retval = sym->nested_symbol_table->search_lexeme("RETVAL", currType, currDec->pointers);   // Create entry for return value
+                sym->size = 0;
+                sym->initial_value = NULL;
+            }
+            $$ = $2;
+        }
         ;
 
 declaration_list: 
@@ -1695,9 +1823,14 @@ declaration_list:
         | declaration_list declaration
         {}
         ;
-               
+
 %%
 
 void yyerror(string s) {
-    printf("error in Line: %d ( %s )\n" , lineno, s.c_str());
+    /*
+        This function prints any error encountered while parsing
+    */
+    cout << "Error occurred: " << s << endl;
+    cout << "Line no.: " << yylineno << endl;
+    cout << "Unable to parse: " << yytext << endl; 
 }

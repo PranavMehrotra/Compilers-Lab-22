@@ -1,160 +1,150 @@
-%{
+/* C Declarations and Definitions */
+%{  
     #include <stdio.h>
-    #include <stdlib.h>
-    #include "ass5_20CS10085_20CS30065_translator.h"
-    #include "y.tab.h"
-    int lineno = 1;
+    #include "ass6_20CS10085_20CS30065_translator.h"
+    #include "ass6_20CS10085_20CS30065.tab.h"
 %}
 
+%option yylineno
 %option noyywrap
 
-%x single_line 
+%x single_line
 %x multi_line
 
-/* regular definations and their corresponding regex */
-/*regex for keyword */
-keyword                         "auto"|"enum"|"restrict"|"unsigned"|"break"|"extern"|"return"|"void"|"case"|"float"|"short"|"volatile"|"char"|"for"|"signed"|"while"|"const"|"goto"|"sizeof"|"_Bool"|"continue"|"if"|"static"|"_Complex"|"default"|"inline"|"struct"|"_Imaginary"|"do"|"int"|"switch"|"double"|"long"|"typedef"|"else"|"register"|"union"
+/* Regular Expression Definitions */
 
-id_non_digit                    [A-Za-z_]
-id_digit                        [A-Za-z_0-9]
-digit                           [0-9]
-nonzero_digit                   [1-9]
-digit_seq                       {digit}+
+identifier                      [_a-zA-Z][_a-zA-Z0-9]*
 
-sign                            [+-]
-escape                          "\\\'"|"\\\""|"\\\?"|"\\\\"|"\\a"|"\\b"|"\\f"|"\\n"|"\\r"|"\\t"|"\\v"
-ws                              [ \t\r]
-newline                         [\n]
-delim                           {ws}+
+integer_constant                [1-9][0-9]*|[0]
 
-identifier                      {id_non_digit}{id_digit}*
-
-integer_constant                {nonzero_digit}{digit}*|"0"
-
-fractional_constant             {digit_seq}?\.{digit_seq}|{digit_seq}\.
-exponent                        [eE]{sign}?{digit_seq}
-floating_constant               {fractional_constant}{exponent}?|{digit_seq}{exponent} 
+digits                          [0-9]+
+exponent                        [eE]([+-]?){digits}
+fractional_constant             ({digits}?\.{digits})|({digits}\.)
+floating_constant               ({fractional_constant}{exponent}?)|({digits}{exponent})
 
 enum_constant                   {identifier}
-c_char                          [^\'\n\\]|{escape}
-c_seq                           {c_char}+
-char_constant                   \'{c_seq}\'
+
+escape_sequence                 \\['"?\\abfnrtv]
+c_char                          [^\'\\\n]|{escape_sequence}
+c_char_sequence                 {c_char}+
+char_constant                   \'({c_char_sequence})\'
 
 constant                        {integer_constant}|{floating_constant}|{enum_constant}|{char_constant}
-s_char                          [^\"\\\n]|{escape}
-s_seq                           {s_char}+
-string                          \"{s_seq}?\"
 
-punctuators                     "["|"]"|"("|")"|"{"|"}"|"."|"-"|">"|"++"|"--"|"&"|"*"|"+"|"-"|"~"|"!"|"/"|"%"|"<<"|">>"|"<"|">"|"<="|">="|"=="|"!="|"^"|"|"|"&&"|"||"|"?"|":"|";"|"..."|"="|"*="|"/="|"%="|"+="|"-="|"<<="|">>="|"&="|"^="|"|="|","|"#"
+s_char                          [^\"\\\n]|{escape_sequence}
+s_char_sequence                 {s_char}+
+string_literal                  \"({s_char_sequence}?)\"
+
+ws                              [ \t\n]
+
+/* Translation_rules */
 %%
 
-    /* transition rules corresponding to keywords */
 "auto"                          { return AUTO; }
 "break"                         { return BREAK; }
 "case"                          { return CASE; }
-"char"                          { return CHAR; }
+"char"                          { return CHAR_; }
 "const"                         { return CONST; }
 "continue"                      { return CONTINUE; }
 "default"                       { return DEFAULT; }
 "do"                            { return DO; }
 "double"                        { return DOUBLE; }
 "else"                          { return ELSE; }
-"enum"                          { return ENUM; }
+"enum"                          { return ENUM; }             
 "extern"                        { return EXTERN; }
-"float"                         { return FLOAT; }
+"float"                         { return FLOAT_; }
 "for"                           { return FOR; }
-"goto"                          { return GOTO; }
+"goto"                          { return GOTO_; }
 "if"                            { return IF; }
 "inline"                        { return INLINE; }
-"int"                           { return INT; }
+"int"                           { return INT_; }
 "long"                          { return LONG; }
 "register"                      { return REGISTER; }
 "restrict"                      { return RESTRICT; }
-"return"                        { return RETURN; }
+"return"                        { return RETURN_; }
 "short"                         { return SHORT; }
 "signed"                        { return SIGNED; }
 "sizeof"                        { return SIZEOF; }
 "static"                        { return STATIC; }
+"struct"                        { return STRUCT; }
 "switch"                        { return SWITCH; }
+"typedef"                       { return TYPEDEF; }
+"union"                         { return UNION; }
 "unsigned"                      { return UNSIGNED; }
-"void"                          { return VOID; }
+"void"                          { return VOID_; }
 "volatile"                      { return VOLATILE; }
 "while"                         { return WHILE; }
-"_Bool"                         { return _BOOL; }
-"_Complex"                      { return _COMPLEX; }
-"_Imaginary"                    { return _IMAGINARY; }
-
-    /* for identifier, the synthesised attribute value will be the pointer to the symbol table entry.*/
-{identifier}                    { yylval.idval = curr_symb_table->search_lexeme(yytext); return IDENTIFIER; }
-
-    /* for terminals other than identifier, the terminals will have synthesised attribute value equal to yytext */
-{integer_constant}              { yylval.intval = atoi(yytext); return INTEGER_CONSTANT; }
-{floating_constant}             { yylval.floatval = yytext; return FLOATING_CONSTANT; }
-{char_constant}                 { yylval.charval = yytext; return CHARACTER_CONSTANT; }
-{string}                        { yylval.stringval = yytext; return STRING_LITERAL; }
+"_Bool"                         { return BOOL_; }
+"_Complex"                      { return COMPLEX; }
+"_Imaginary"                    { return IMAGINARY; }
 
 
-    /* Regex for single line comments will be active only when // is read */
+
 "//"                            { BEGIN(single_line); }
-<single_line>.                  { }
-<single_line>\n                 { BEGIN(INITIAL);}
+<single_line>.                  {  }
+<single_line>\n                 { BEGIN(INITIAL); }
+<single_line><<EOF>>            { BEGIN(INITIAL); }
 
-    /* Regex for multi line comments will be active only when /* is read */
 "/*"                            { BEGIN(multi_line); }
-<multi_line>.                   { }
-<multi_line>\n                  { }
-<multi_line>"*/"                { BEGIN(INITIAL);}
+<multi_line>"*/"                { BEGIN(INITIAL); }
+<multi_line>.                   {  }
+<multi_line>\n                  {  }
+
+{identifier}                    { yylval.str = new string(yytext); return IDENTIFIER; }
+{integer_constant}              { yylval.intval = atoi(yytext); return INTEGER_CONSTANT; }
+{floating_constant}             { yylval.floatval = atof(yytext); return FLOATING_CONSTANT; }
+{char_constant}                 { yylval.charval = yytext[1]; return CHAR_CONSTANT; }
+{string_literal}                { yylval.str = new string(yytext); return STRING_LITERAL; }
+{ws}                            {}
+
 
 "["                             { return LEFT_SQUARE; }
-"++"                            { return SELF_INCREASE ; }
-"/"                             { return F_SLASH; }
-"?"                             { return QUESTION_MARK; }
-"="                             { return ASSIGN ; }
-","                             { return COMMA; }
 "]"                             { return RIGHT_SQUARE; }
-"("                             { return LEFT_PARENTHESES; }
+"("                             { return LEFT_PARENTHESIS; }
+")"                             { return RIGHT_PARENTHESIS; }
 "{"                             { return LEFT_CURLY; }
 "}"                             { return RIGHT_CURLY; }
 "."                             { return DOT; }
 "->"                            { return ARROW; }
+"++"                            { return SELF_INCREASE; }
+"--"                            { return SELF_DECREASE; }
+"&"                             { return BITWISE_AND; }
 "*"                             { return MUL; }
 "+"                             { return PLUS; }
-"-"                             { return MINUS; }
-"~"                             { return TILDE; }
+"-"                             { return SUBTRACT; }
+"~"                             { return BITWISE_NOR; }
 "!"                             { return EXCLAMATION; }
+"/"                             { return F_SLASH; }
 "%"                             { return MODULO; }
 "<<"                            { return LEFT_SHIFT; }
 ">>"                            { return RIGHT_SHIFT; }
 "<"                             { return LESS_THAN; }
 ">"                             { return GREATER_THAN; }
-"<="                            { return  LESS_THAN_EQUAL; }
+"<="                            { return LESS_THAN_EQUAL; }
 ">="                            { return GREATER_THAN_EQUAL; }
-":"                             { return COLON; }
-";"                             { return SEMI_COLON; }
-"..."                           { return ELLIPSIS; }
-"*="                            { return MUL_ASSIGN ; }
-"/="                            { return DIV_ASSIGN ; }
-"%="                            { return MODULO_ASSIGN ; }
-"+="                            { return PLUS_ASSIGN ; }
-"-="                            { return MINUS_ASSIGN ; }
-"<<="                           { return LEFT_SHIFT_ASSIGN ; }
-"--"                            { return SELF_DECREASE ; }
-")"                             { return RIGHT_PARENTHESES; }
-"&"                             { return BITWISE_AND; }
 "=="                            { return EQUAL; }
+"!="                            { return NOT_EQUAL; }
 "^"                             { return BITWISE_XOR; }
 "|"                             { return BITWISE_OR; }
 "&&"                            { return LOGICAL_AND; }
-"||"                            { return LOGICAL_BITWISE_OR; }
-">>="                           { return RIGHT_SHIFT_ASSIGN ; }
-"!="                            { return NOT_EQUAL; }
-"&="                            { return BITWISE_AND_ASSIGN ; }
-"|="                            { return BITWISE_OR_ASSIGN ; }
-"^="                            { return BITWISE_XOR_ASSIGN ; }
+"||"                            { return LOGICAL_OR; }
+"?"                             { return QUESTION_MARK; }
+":"                             { return COLON; }
+";"                             { return SEMICOLON; }
+"..."                           { return ELLIPSIS; }
+"="                             { return ASSIGN_; }
+"*="                            { return MUL_ASSIGN; }
+"/="                            { return F_SLASH_ASSIGN; }
+"%="                            { return MODULO_ASSIGN; }
+"+="                            { return PLUSASSIGN; }
+"-="                            { return SUBTRACT_ASSIGN; }
+"<<="                           { return LEFT_SHIFT_ASSIGN; }
+">>="                           { return RIGHT_SHIFT_ASSIGN; }
+"&="                            { return BITWISE_AND_ASSIGN; }
+"^="                            { return BITWISE_XOR_ASSIGN; }
+"|="                            { return BITWISE_OR_ASSIGN; }
+","                             { return COMMA; }
+"#"                             { return HASH; }
 
-
-{ws}                            { }
-{newline}                       { lineno++;}
-.                               { printf("Error in Line number: %d, Invalid token: %s read\n", lineno, yytext); return INVALID; }
 
 %%
